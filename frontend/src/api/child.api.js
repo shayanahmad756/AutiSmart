@@ -129,6 +129,30 @@ const childAPI = {
   /**
    * Download child report as PDF
    */
+  /**
+   * Generate Gemini scenarios for Emotion Explorer levels 7-10
+   */
+  getEmotionScenarios: async (childId, payload) => {
+    try {
+      const response = await http.post(`/caregiver/children/${childId}/emotion-scenarios`, payload);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to generate scenarios' };
+    }
+  },
+
+  /**
+   * Get Gemini AI feedback for Emotion Explorer game level
+   */
+  getEmotionFeedback: async (childId, payload) => {
+    try {
+      const response = await http.post(`/caregiver/children/${childId}/emotion-feedback`, payload);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to get emotion feedback' };
+    }
+  },
+
   downloadChildReportPDF: async (childId) => {
     try {
       // Get the auth token

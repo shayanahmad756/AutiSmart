@@ -41,12 +41,13 @@ const Games = () => {
     },
     {
       id: 3,
-      title: 'Puzzle Builder',
-      description: 'Complete puzzles to develop problem-solving skills',
-      icon: 'bi-puzzle',
+      title: 'Emotion Explorer',
+      description: 'Recognize and understand different facial expressions through fun emoji puzzles',
+      icon: 'bi-emoji-smile',
       difficulty: 'Medium',
-      category: 'Logic',
-      color: 'warning'
+      category: 'Social',
+      color: 'warning',
+      route: '/games/emotion-explorer'
     },
     {
       id: 4,
@@ -67,15 +68,6 @@ const Games = () => {
       color: 'warning'
     },
     {
-      id: 6,
-      title: 'Emotion Explorer',
-      description: 'Recognize and understand different facial expressions',
-      icon: 'bi-emoji-smile',
-      difficulty: 'Medium',
-      category: 'Social',
-      color: 'info'
-    },
-    {
       id: 7,
       title: 'Story Sequencer',
       description: 'Arrange story events in correct order',
@@ -92,10 +84,20 @@ const Games = () => {
       difficulty: 'Hard',
       category: 'Logic',
       color: 'danger'
+    },
+    {
+      id: 11,
+      title: 'Communication Builder',
+      description: 'Build "I want ___" sentences with emoji picture cards and hear them spoken aloud',
+      icon: 'bi-chat-heart',
+      difficulty: 'Easy',
+      category: 'Communication',
+      color: 'info',
+      route: '/games/communication-builder'
     }
   ];
 
-  const categories = ['All', 'Memory', 'Visual', 'Logic', 'Math', 'Social', 'Audio'];
+  const categories = ['All', 'Memory', 'Visual', 'Logic', 'Math', 'Social', 'Audio', 'Communication'];
   
   // Check if caregiver and no child selected
   const requiresChildSelection = user?.role === 'caregiver' && !selectedChild;

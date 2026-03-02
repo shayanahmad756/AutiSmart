@@ -3,9 +3,12 @@ import Card from '../components/Card';
 import Badge from '../components/Badge';
 import Toast from '../components/Toast';
 import { assessmentService } from '../services';
+import { childService } from '../services';
 
 const AssessmentManagement = () => {
+  const [activeTab, setActiveTab] = useState('assessments'); // 'assessments' | 'childQuizzes'
   const [assessments, setAssessments] = useState([]);
+  const [children, setChildren] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showModal, setShowModal] = useState(false);
   const [modalMode, setModalMode] = useState('create'); // 'create' or 'edit'
@@ -16,21 +19,28 @@ const AssessmentManagement = () => {
   const [filterLevel, setFilterLevel] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
 
+  // AI generation state
+  const [generating, setGenerating] = useState(false);
+  const [aiConfig, setAiConfig] = useState({ categories: ['Social Interaction', 'Communication'], count: 5 });
+  const [generatingChild, setGeneratingChild] = useState(null); // childId being regenerated
+
+  // Manual question builder state
+  const [newQuestion, setNewQuestion] = useState({
+    category: 'Social Interaction',
+    question: '',
+    option1: '', option2: '', option3: '',
+    score1: 1, score2: 2, score3: 3
+  });
+  const [addingQuestion, setAddingQuestion] = useState(false);
+
   // Form state
   const [formData, setFormData] = useState({
     level: 'easy',
     title: '',
     description: '',
     questions: [],
+    formDefinition: [],
     isActive: true,
-  });
-
-  const [currentQuestion, setCurrentQuestion] = useState({
-    id: '',
-    category: 'Social Interaction',
-    question: '',
-    options: ['', '', ''],
-    scores: [1, 2, 3],
   });
 
   const categories = [
@@ -52,6 +62,7 @@ const AssessmentManagement = () => {
   // Fetch assessments
   useEffect(() => {
     fetchAssessments();
+    fetchChildren();
   }, []);
 
   const fetchAssessments = async () => {
@@ -63,6 +74,15 @@ const AssessmentManagement = () => {
       showToast(error.message || 'Failed to fetch assessments', 'danger');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchChildren = async () => {
+    try {
+      const response = await childService.getAllChildren();
+      setChildren(response.data || []);
+    } catch (error) {
+      console.warn('Could not load children:', error.message);
     }
   };
 
@@ -78,6 +98,7 @@ const AssessmentManagement = () => {
       title: '',
       description: '',
       questions: [],
+      formDefinition: [],
       isActive: true,
     });
     setShowModal(true);
@@ -90,7 +111,8 @@ const AssessmentManagement = () => {
       level: assessment.level,
       title: assessment.title,
       description: assessment.description,
-      questions: assessment.questions,
+      questions: assessment.questions || [],
+      formDefinition: assessment.formDefinition || [],
       isActive: assessment.isActive,
     });
     setShowModal(true);
@@ -108,62 +130,66 @@ const AssessmentManagement = () => {
     }
   };
 
-  const handleAddQuestion = () => {
-    // Question validation
-    if (!currentQuestion.question || currentQuestion.question.trim().length === 0) {
-      showToast('Please enter a question', 'warning');
+  const handleAddManualQuestion = () => {
+    const { category, question, option1, option2, option3, score1, score2, score3 } = newQuestion;
+    if (!question.trim() || !option1.trim() || !option2.trim() || !option3.trim()) {
+      showToast('Please fill in the question and all 3 options', 'warning');
       return;
     }
-
-    if (currentQuestion.question.trim().length < 5) {
-      showToast('Question must be at least 5 characters long', 'warning');
-      return;
-    }
-
-    if (currentQuestion.question.trim().length > 200) {
-      showToast('Question must not exceed 200 characters', 'warning');
-      return;
-    }
-
-    // Options validation
-    if (currentQuestion.options.some(opt => !opt || opt.trim().length === 0)) {
-      showToast('Please fill all option fields', 'warning');
-      return;
-    }
-
-    if (currentQuestion.options.some(opt => opt.trim().length < 1 || opt.trim().length > 100)) {
-      showToast('Each option must be between 1 and 100 characters', 'warning');
-      return;
-    }
-
-    // Category validation
-    const validCategories = ['Social Interaction', 'Communication', 'Behavior', 'Sensory', 'Daily Living'];
-    if (!validCategories.includes(currentQuestion.category)) {
-      showToast('Please select a valid category', 'warning');
-      return;
-    }
-
-    const questionId = `${formData.level}_${formData.questions.length + 1}`;
-    const newQuestion = { ...currentQuestion, id: questionId };
-    
-    setFormData({
-      ...formData,
-      questions: [...formData.questions, newQuestion],
-    });
-
-    // Reset current question
-    setCurrentQuestion({
-      id: '',
-      category: 'Social Interaction',
-      question: '',
-      options: ['', '', ''],
-      scores: [1, 2, 3],
-    });
+    const q = {
+      id: `q_${Date.now()}`,
+      category,
+      question: question.trim(),
+      options: [option1.trim(), option2.trim(), option3.trim()],
+      scores: [Number(score1), Number(score2), Number(score3)]
+    };
+    setFormData(prev => ({ ...prev, questions: [...prev.questions, q] }));
+    setNewQuestion({ category: 'Social Interaction', question: '', option1: '', option2: '', option3: '', score1: 1, score2: 2, score3: 3 });
+    setAddingQuestion(false);
   };
 
   const handleRemoveQuestion = (index) => {
     const updatedQuestions = formData.questions.filter((_, i) => i !== index);
     setFormData({ ...formData, questions: updatedQuestions });
+  };
+
+  // Gemini AI: generate questions and append to the list
+  const handleGenerateQuestions = async () => {
+    if (aiConfig.categories.length === 0) {
+      showToast('Select at least one category for AI generation', 'warning');
+      return;
+    }
+    try {
+      setGenerating(true);
+      const response = await assessmentService.generateQuestions({
+        level: formData.level,
+        categories: aiConfig.categories,
+        count: aiConfig.count
+      });
+      const generatedQuestions = response.data?.questions || [];
+      setFormData(prev => ({
+        ...prev,
+        questions: [...prev.questions, ...generatedQuestions]
+      }));
+      showToast(`${generatedQuestions.length} questions generated and added!`, 'success');
+    } catch (error) {
+      showToast(`AI generation unavailable: ${error.message}`, 'danger');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  // Admin: regenerate child's personalized quiz
+  const handleGenerateChildQuiz = async (childId, childName) => {
+    try {
+      setGeneratingChild(childId);
+      await assessmentService.generateChildQuiz(childId, null);
+      showToast(`Personalized quiz generated for ${childName}!`, 'success');
+    } catch (error) {
+      showToast(`Failed to generate quiz for ${childName}: ${error.message}`, 'danger');
+    } finally {
+      setGeneratingChild(null);
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -205,17 +231,25 @@ const AssessmentManagement = () => {
     }
 
     if (formData.questions.length === 0) {
-      showToast('Please add at least one question to the assessment', 'warning');
+      showToast('Please add at least one question using the AI generator or manual builder', 'warning');
       return;
     }
 
     try {
       setSubmitting(true);
+      const payload = {
+        level: formData.level,
+        title: formData.title,
+        description: formData.description,
+        questions: formData.questions,
+        formDefinition: formData.formDefinition,
+        isActive: formData.isActive
+      };
       if (modalMode === 'create') {
-        await assessmentService.createAssessment(formData);
+        await assessmentService.createAssessment(payload);
         showToast('Assessment created successfully', 'success');
       } else {
-        await assessmentService.updateAssessment(selectedAssessment._id, formData);
+        await assessmentService.updateAssessment(selectedAssessment._id, payload);
         showToast('Assessment updated successfully', 'success');
       }
       setShowModal(false);
@@ -273,8 +307,40 @@ const AssessmentManagement = () => {
         <p className="text-muted">Create and manage quiz-based assessments</p>
       </div>
 
-      {/* Stats */}
-      <div className="row g-4 mb-4">
+      {/* Tabs */}
+      <ul className="nav nav-tabs mb-4">
+        <li className="nav-item">
+          <button
+            className={`nav-link ${activeTab === 'assessments' ? 'active fw-semibold' : ''}`}
+            onClick={() => setActiveTab('assessments')}
+          >
+            <i className="bi bi-clipboard-check me-2"></i>Global Assessments
+          </button>
+        </li>
+        <li className="nav-item">
+          <button
+            className={`nav-link ${activeTab === 'childQuizzes' ? 'active fw-semibold' : ''}`}
+            onClick={() => setActiveTab('childQuizzes')}
+          >
+            <i className="bi bi-person-heart me-2"></i>Child Quizzes
+            {children.length > 0 && (
+              <span className="badge bg-primary ms-2">{children.length}</span>
+            )}
+          </button>
+        </li>
+      </ul>
+
+      {/* ──── ASSESSMENTS TAB ──── */}
+      {activeTab === 'assessments' && (
+        <>
+          <div className="d-flex justify-content-end mb-3">
+            <button className="btn btn-primary" onClick={handleCreateNew}>
+              <i className="bi bi-plus-lg me-2"></i>Create New Assessment
+            </button>
+          </div>
+
+          {/* Stats */}
+          <div className="row g-4 mb-4">
         <div className="col-md-3">
           <Card className="card-stat">
             <div className="d-flex justify-content-between align-items-center">
@@ -495,9 +561,78 @@ const AssessmentManagement = () => {
                     </div>
                   </div>
 
+                  {/* AI Generation Panel */}
+                  <div className="card mb-4 border-primary">
+                    <div className="card-header bg-primary text-white d-flex align-items-center">
+                      <i className="bi bi-stars me-2"></i>
+                      <h6 className="mb-0">Generate Questions with Gemini AI</h6>
+                    </div>
+                    <div className="card-body">
+                      <div className="row g-3 align-items-end">
+                        <div className="col-md-6">
+                          <label className="form-label fw-semibold">Focus Categories</label>
+                          <div className="d-flex flex-wrap gap-2">
+                            {categories.map(cat => (
+                              <div key={cat} className="form-check">
+                                <input
+                                  className="form-check-input"
+                                  type="checkbox"
+                                  id={`ai-cat-${cat}`}
+                                  checked={aiConfig.categories.includes(cat)}
+                                  onChange={(e) => {
+                                    setAiConfig(prev => ({
+                                      ...prev,
+                                      categories: e.target.checked
+                                        ? [...prev.categories, cat]
+                                        : prev.categories.filter(c => c !== cat)
+                                    }));
+                                  }}
+                                />
+                                <label className="form-check-label small" htmlFor={`ai-cat-${cat}`}>{cat}</label>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="col-md-3">
+                          <label className="form-label fw-semibold">Number of Questions</label>
+                          <input
+                            type="number"
+                            className="form-control"
+                            min="1" max="15"
+                            value={aiConfig.count}
+                            onChange={(e) => setAiConfig(prev => ({ ...prev, count: parseInt(e.target.value) || 5 }))}
+                          />
+                        </div>
+                        <div className="col-md-3">
+                          <button
+                            type="button"
+                            className="btn btn-primary w-100"
+                            onClick={handleGenerateQuestions}
+                            disabled={generating}
+                          >
+                            {generating ? (
+                              <><span className="spinner-border spinner-border-sm me-2"></span>Generating...</>
+                            ) : (
+                              <><i className="bi bi-stars me-2"></i>Generate</>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
                   {/* Questions List */}
                   <div className="mb-4">
-                    <h6>Questions ({formData.questions.length})</h6>
+                    <div className="d-flex justify-content-between align-items-center mb-2">
+                      <h6 className="mb-0">Questions ({formData.questions.length})</h6>
+                      {formData.questions.length > 0 && (
+                        <button type="button" className="btn btn-sm btn-outline-danger"
+                          onClick={() => setFormData(prev => ({ ...prev, questions: [] }))}
+                        >
+                          <i className="bi bi-trash me-1"></i>Clear All
+                        </button>
+                      )}
+                    </div>
                     {formData.questions.length > 0 && (
                       <div className="list-group mb-3">
                         {formData.questions.map((q, index) => (
@@ -528,79 +663,64 @@ const AssessmentManagement = () => {
                     )}
                   </div>
 
-                  {/* Add Question Form */}
-                  <div className="card mb-3">
-                    <div className="card-header">
-                      <h6 className="mb-0">Add New Question</h6>
+                  {/* Manual Question Builder */}
+                  <div className="card mb-4 border-secondary">
+                    <div className="card-header d-flex align-items-center justify-content-between">
+                      <div>
+                        <i className="bi bi-ui-checks-grid me-2"></i>
+                        <h6 className="mb-0 d-inline">Add Question Manually</h6>
+                      </div>
+                      <button type="button" className="btn btn-sm btn-outline-secondary"
+                        onClick={() => setAddingQuestion(v => !v)}>
+                        <i className={`bi bi-${addingQuestion ? 'dash' : 'plus'}-lg me-1`}></i>
+                        {addingQuestion ? 'Collapse' : 'Add Question'}
+                      </button>
                     </div>
-                    <div className="card-body">
-                      <div className="row g-3">
-                        <div className="col-md-6">
-                          <label className="form-label">Category</label>
-                          <select
-                            className="form-select"
-                            value={currentQuestion.category}
-                            onChange={(e) => setCurrentQuestion({ ...currentQuestion, category: e.target.value })}
-                          >
-                            {categories.map(cat => (
-                              <option key={cat} value={cat}>{cat}</option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="col-12">
-                          <label className="form-label">Question</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            value={currentQuestion.question}
-                            onChange={(e) => setCurrentQuestion({ ...currentQuestion, question: e.target.value })}
-                            placeholder="Enter the question"
-                          />
-                        </div>
-                        {[0, 1, 2].map(i => (
-                          <div key={i} className="col-md-4">
-                            <label className="form-label">Option {i + 1}</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              value={currentQuestion.options[i]}
-                              onChange={(e) => {
-                                const newOptions = [...currentQuestion.options];
-                                newOptions[i] = e.target.value;
-                                setCurrentQuestion({ ...currentQuestion, options: newOptions });
-                              }}
-                              placeholder={`Option ${i + 1}`}
-                            />
-                            <div className="mt-1">
-                              <label className="form-label small">Score</label>
-                              <select
-                                className="form-select form-select-sm"
-                                value={currentQuestion.scores[i]}
-                                onChange={(e) => {
-                                  const newScores = [...currentQuestion.scores];
-                                  newScores[i] = parseInt(e.target.value);
-                                  setCurrentQuestion({ ...currentQuestion, scores: newScores });
-                                }}
-                              >
-                                <option value="1">1 (Positive)</option>
-                                <option value="2">2 (Mixed)</option>
-                                <option value="3">3 (Concerning)</option>
-                              </select>
-                            </div>
+                    {addingQuestion && (
+                      <div className="card-body">
+                        <div className="row g-2">
+                          <div className="col-md-4">
+                            <label className="form-label small fw-semibold">Category</label>
+                            <select className="form-select form-select-sm"
+                              value={newQuestion.category}
+                              onChange={e => setNewQuestion(p => ({ ...p, category: e.target.value }))}>
+                              {categories.map(c => <option key={c} value={c}>{c}</option>)}
+                            </select>
                           </div>
-                        ))}
-                        <div className="col-12">
-                          <button
-                            type="button"
-                            className="btn btn-secondary"
-                            onClick={handleAddQuestion}
-                          >
-                            <i className="bi bi-plus-lg me-2"></i>
-                            Add Question
-                          </button>
+                          <div className="col-12">
+                            <label className="form-label small fw-semibold">Question Text *</label>
+                            <input type="text" className="form-control form-control-sm"
+                              placeholder="Enter question..."
+                              value={newQuestion.question}
+                              onChange={e => setNewQuestion(p => ({ ...p, question: e.target.value }))} />
+                          </div>
+                          {[1,2,3].map(i => (
+                            <div key={i} className="col-md-8">
+                              <label className="form-label small fw-semibold">Option {i} *</label>
+                              <div className="input-group input-group-sm">
+                                <input type="text" className="form-control"
+                                  placeholder={`Option ${i}`}
+                                  value={newQuestion[`option${i}`]}
+                                  onChange={e => setNewQuestion(p => ({ ...p, [`option${i}`]: e.target.value }))} />
+                                <span className="input-group-text">Score</span>
+                                <select className="form-select" style={{ maxWidth: 80 }}
+                                  value={newQuestion[`score${i}`]}
+                                  onChange={e => setNewQuestion(p => ({ ...p, [`score${i}`]: Number(e.target.value) }))}>
+                                  <option value={1}>1</option>
+                                  <option value={2}>2</option>
+                                  <option value={3}>3</option>
+                                </select>
+                              </div>
+                            </div>
+                          ))}
+                          <div className="col-12 mt-2">
+                            <button type="button" className="btn btn-sm btn-success" onClick={handleAddManualQuestion}>
+                              <i className="bi bi-plus-circle me-1"></i>Add to List
+                            </button>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    )}
                   </div>
 
                   <div className="d-flex justify-content-end gap-2">
@@ -632,6 +752,69 @@ const AssessmentManagement = () => {
             </div>
           </div>
         </div>
+      )}
+        </>
+      )}
+
+      {/* ──── CHILD QUIZZES TAB ──── */}
+      {activeTab === 'childQuizzes' && (
+        <>
+          <div className="alert alert-info mb-4">
+            <i className="bi bi-info-circle me-2"></i>
+            Each child gets a personalized quiz generated by Gemini AI based on their assessment history.
+            Quizzes auto-update after each submission. You can also manually regenerate below.
+          </div>
+
+          <Card>
+            {children.length === 0 ? (
+              <div className="text-center py-5">
+                <i className="bi bi-people fs-1 text-muted"></i>
+                <p className="text-muted mt-2">No children found. Children will appear here after caregivers register them.</p>
+              </div>
+            ) : (
+              <div className="table-responsive">
+                <table className="table table-hover mb-0">
+                  <thead>
+                    <tr>
+                      <th>Child</th>
+                      <th>Age</th>
+                      <th>Diagnosis</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {children.map((child) => (
+                      <tr key={child._id}>
+                        <td>
+                          <div className="fw-medium">{child.name}</div>
+                          <div className="text-muted small">{child.gender}</div>
+                        </td>
+                        <td>{child.age} yrs</td>
+                        <td>
+                          <span className="text-muted small">{child.diagnosis || '—'}</span>
+                        </td>
+                        <td>
+                          <button
+                            className="btn btn-sm btn-outline-primary"
+                            onClick={() => handleGenerateChildQuiz(child._id, child.name)}
+                            disabled={generatingChild === child._id}
+                            title="Generate personalized AI quiz for this child"
+                          >
+                            {generatingChild === child._id ? (
+                              <><span className="spinner-border spinner-border-sm me-1"></span>Generating...</>
+                            ) : (
+                              <><i className="bi bi-stars me-1"></i>Regenerate AI Quiz</>
+                            )}
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </Card>
+        </>
       )}
     </div>
   );

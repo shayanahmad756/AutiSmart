@@ -5,6 +5,7 @@
 import childService from '../services/child.service.js';
 import { asyncHandler } from '../middleware/error.middleware.js';
 import PDFDocument from 'pdfkit';
+import geminiService from '../services/gemini.service.js';
 
 // @desc    Add a new child
 // @route   POST /api/children
@@ -605,4 +606,53 @@ export const generateChildReport = asyncHandler(async (req, res) => {
       });
     }
   }
+});
+
+// @desc    Generate Gemini AI scenario rounds for Emotion Explorer levels 7-10
+// @route   POST /api/caregiver/children/:id/emotion-scenarios
+// @access  Private (Caregiver / Admin)
+export const getEmotionScenarios = asyncHandler(async (req, res) => {
+  const child = await childService.getChildById(req.params.id, req.user._id);
+
+  if (!child) {
+    return res.status(404).json({ success: false, message: 'Child not found' });
+  }
+
+  const { level, levelName, pool, count } = req.body;
+
+  const scenarios = await geminiService.generateEmotionScenarios({
+    child,
+    level: level ?? 7,
+    levelName: levelName ?? 'Advanced',
+    pool: Array.isArray(pool) ? pool : [],
+    count: count ?? 10,
+  });
+
+  res.status(200).json({ success: true, scenarios });
+});
+
+// @desc    Generate Gemini AI feedback for Emotion Explorer game level
+// @route   POST /api/caregiver/children/:id/emotion-feedback
+// @access  Private (Caregiver / Admin)
+export const getEmotionFeedback = asyncHandler(async (req, res) => {
+  const child = await childService.getChildById(req.params.id, req.user._id);
+
+  if (!child) {
+    return res.status(404).json({ success: false, message: 'Child not found' });
+  }
+
+  const { level, levelName, score, maxScore, correctAnswers, incorrectAnswers, emotionsStruggled } = req.body;
+
+  const feedback = await geminiService.generateEmotionFeedback({
+    child,
+    level: level ?? 1,
+    levelName: levelName ?? 'Beginner',
+    score: score ?? 0,
+    maxScore: maxScore ?? 100,
+    correctAnswers: correctAnswers ?? 0,
+    incorrectAnswers: incorrectAnswers ?? 0,
+    emotionsStruggled: emotionsStruggled ?? []
+  });
+
+  res.status(200).json({ success: true, feedback });
 });

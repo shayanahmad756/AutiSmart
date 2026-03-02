@@ -63,13 +63,12 @@ const assessmentSchema = new mongoose.Schema({
   },
   questions: {
     type: [questionSchema],
-    required: true,
-    validate: {
-      validator: function(arr) {
-        return arr.length > 0;
-      },
-      message: 'Assessment must have at least one question'
-    }
+    default: []
+  },
+  // Stores react-form-builder2 JSON definition for the visual quiz builder
+  formDefinition: {
+    type: [mongoose.Schema.Types.Mixed],
+    default: []
   },
   isActive: {
     type: Boolean,
@@ -96,7 +95,6 @@ assessmentSchema.virtual('id').get(function() {
 });
 
 // Index for faster queries
-assessmentSchema.index({ level: 1, isActive: 1 });
 assessmentSchema.index({ createdAt: -1 });
 
 // Ensure unique level for active assessments (one assessment per level)

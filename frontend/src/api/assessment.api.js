@@ -31,25 +31,12 @@ const assessmentAPI = {
   /**
    * Admin: Get all assessments (including inactive)
    */
-  getAllAssessments: async (filters = {}) => {
+  getAllAssessments: async () => {
     try {
-      const params = new URLSearchParams(filters).toString();
-      const response = await http.get(`/admin/assessments${params ? `?${params}` : ''}`);
+      const response = await http.get('/assessments/admin/all');
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to fetch assessments' };
-    }
-  },
-
-  /**
-   * Admin: Get single assessment by ID
-   */
-  getAssessmentById: async (assessmentId) => {
-    try {
-      const response = await http.get(`/admin/assessments/${assessmentId}`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to fetch assessment' };
     }
   },
 
@@ -58,7 +45,7 @@ const assessmentAPI = {
    */
   createAssessment: async (assessmentData) => {
     try {
-      const response = await http.post('/admin/assessments', assessmentData);
+      const response = await http.post('/assessments/admin', assessmentData);
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to create assessment' };
@@ -70,22 +57,10 @@ const assessmentAPI = {
    */
   updateAssessment: async (assessmentId, assessmentData) => {
     try {
-      const response = await http.put(`/admin/assessments/${assessmentId}`, assessmentData);
+      const response = await http.put(`/assessments/admin/${assessmentId}`, assessmentData);
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to update assessment' };
-    }
-  },
-
-  /**
-   * Admin: Toggle assessment status
-   */
-  toggleAssessmentStatus: async (assessmentId) => {
-    try {
-      const response = await http.put(`/admin/assessments/${assessmentId}/toggle-status`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to toggle assessment status' };
     }
   },
 
@@ -94,10 +69,70 @@ const assessmentAPI = {
    */
   deleteAssessment: async (assessmentId) => {
     try {
-      const response = await http.delete(`/admin/assessments/${assessmentId}`);
+      const response = await http.delete(`/assessments/admin/${assessmentId}`);
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to delete assessment' };
+    }
+  },
+
+  /**
+   * AI: Generate questions using Gemini
+   */
+  generateQuestions: async ({ level, categories, count }) => {
+    try {
+      const response = await http.post('/assessments/generate-questions', { level, categories, count });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to generate questions' };
+    }
+  },
+
+  /**
+   * Get personalized quiz for a child
+   */
+  getChildQuiz: async (childId) => {
+    try {
+      const response = await http.get(`/assessments/child/${childId}/quiz`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch child quiz' };
+    }
+  },
+
+  /**
+   * Admin: Generate personalized quiz for a child
+   */
+  generateChildQuiz: async (childId, level) => {
+    try {
+      const response = await http.post(`/assessments/child/${childId}/generate`, { level });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to generate child quiz' };
+    }
+  },
+
+  /**
+   * Submit assessment results for a child
+   */
+  submitResult: async (childId, resultData) => {
+    try {
+      const response = await http.post('/assessments/results', { childId, ...resultData });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to save assessment result' };
+    }
+  },
+
+  /**
+   * Get past results for a child
+   */
+  getChildResults: async (childId) => {
+    try {
+      const response = await http.get(`/assessments/child/${childId}/results`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch child results' };
     }
   },
 };

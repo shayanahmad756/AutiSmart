@@ -52,7 +52,8 @@ const sampleAssessments = [
         scores: [1, 2, 3]
       }
     ],
-    isActive: true
+    isActive: true,
+    formDefinition: []
   },
   {
     level: 'intermediate',
@@ -102,7 +103,8 @@ const sampleAssessments = [
         scores: [1, 2, 3]
       }
     ],
-    isActive: true
+    isActive: true,
+    formDefinition: []
   },
   {
     level: 'advanced',
@@ -159,7 +161,8 @@ const sampleAssessments = [
         scores: [1, 2, 3]
       }
     ],
-    isActive: true
+    isActive: true,
+    formDefinition: []
   },
   {
     level: 'sensory',
@@ -209,7 +212,8 @@ const sampleAssessments = [
         scores: [1, 2, 3]
       }
     ],
-    isActive: true
+    isActive: true,
+    formDefinition: []
   }
 ];
 

@@ -25,4 +25,10 @@ router.post('/children/:id/activities', childController.addActivity);
 // Report route
 router.get('/children/:id/report', childController.generateChildReport);
 
+// Emotion Explorer AI scenario generation route (levels 7-10)
+router.post('/children/:id/emotion-scenarios', childController.getEmotionScenarios);
+
+// Emotion Explorer AI feedback route
+router.post('/children/:id/emotion-feedback', childController.getEmotionFeedback);
+
 export default router;

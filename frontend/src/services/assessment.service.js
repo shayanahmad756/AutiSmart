@@ -43,15 +43,9 @@ class AssessmentService {
    * Create new assessment (Admin)
    */
   async createAssessment(assessmentData) {
-    // Validate required fields
-    if (!assessmentData.title || !assessmentData.category || !assessmentData.questions) {
-      throw new Error('Title, category, and questions are required');
+    if (!assessmentData.title || !assessmentData.level || !assessmentData.description) {
+      throw new Error('Title, level, and description are required');
     }
-
-    if (!Array.isArray(assessmentData.questions) || assessmentData.questions.length === 0) {
-      throw new Error('At least one question is required');
-    }
-
     return await assessmentAPI.createAssessment(assessmentData);
   }
 
@@ -74,6 +68,41 @@ class AssessmentService {
    */
   async deleteAssessment(assessmentId) {
     return await assessmentAPI.deleteAssessment(assessmentId);
+  }
+
+  /**
+   * AI: Generate questions using Gemini
+   */
+  async generateQuestions({ level, categories, count }) {
+    return await assessmentAPI.generateQuestions({ level, categories, count });
+  }
+
+  /**
+   * Get personalized quiz for a child (falls back to global)
+   */
+  async getChildQuiz(childId) {
+    return await assessmentAPI.getChildQuiz(childId);
+  }
+
+  /**
+   * Admin: Generate personalized AI quiz for a child
+   */
+  async generateChildQuiz(childId, level) {
+    return await assessmentAPI.generateChildQuiz(childId, level);
+  }
+
+  /**
+   * Submit assessment results for a child
+   */
+  async submitResult(childId, resultData) {
+    return await assessmentAPI.submitResult(childId, resultData);
+  }
+
+  /**
+   * Get past results for a child
+   */
+  async getChildResults(childId) {
+    return await assessmentAPI.getChildResults(childId);
   }
 
   /**

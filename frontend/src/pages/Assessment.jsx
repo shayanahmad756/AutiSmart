@@ -99,12 +99,24 @@ const Assessment = () => {
     fetchAssessments();
   }, []);
 
+  // When a child is selected, load their personalized quiz
+  useEffect(() => {
+    if (selectedChild?._id) {
+      fetchChildQuiz(selectedChild._id);
+    } else {
+      // No child selected — revert to global assessments
+      fetchAssessments();
+    }
+    // Reset answers when child changes
+    setAnswers({});
+    setShowResults(false);
+  }, [selectedChild?._id]);
+
   const fetchAssessments = async () => {
     try {
       setLoading(true);
       const response = await assessmentService.getAssessments();
       if (response.success && response.data) {
-        // Transform backend data to match existing structure
         const transformedData = {};
         Object.keys(response.data).forEach(level => {
           if (response.data[level]) {
@@ -115,8 +127,6 @@ const Assessment = () => {
             };
           }
         });
-        
-        // Only update if we have data, otherwise keep default/fallback
         if (Object.keys(transformedData).length > 0) {
           setAssessmentData(transformedData);
         }
@@ -124,6 +134,38 @@ const Assessment = () => {
     } catch (error) {
       console.error('Failed to fetch assessments:', error);
       showToast('Using default assessment questions', 'info');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchChildQuiz = async (childId) => {
+    try {
+      setLoading(true);
+      const response = await assessmentService.getChildQuiz(childId);
+      if (response.success && response.data) {
+        const quizData = {};
+        ['easy', 'intermediate', 'advanced', 'sensory'].forEach(level => {
+          if (response.data[level]) {
+            quizData[level] = {
+              title: response.data[level].title,
+              description: response.data[level].description,
+              questions: response.data[level].questions,
+              isPersonalized: response.data[level].isPersonalized
+            };
+          }
+        });
+        if (Object.keys(quizData).length > 0) {
+          setAssessmentData(quizData);
+          const hasPersonalized = Object.values(quizData).some(q => q.isPersonalized);
+          if (hasPersonalized) {
+            showToast(`Loaded personalized quiz for ${selectedChild?.name}`, 'info');
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch child quiz, falling back to global:', error);
+      fetchAssessments();
     } finally {
       setLoading(false);
     }
@@ -228,7 +270,7 @@ const Assessment = () => {
     }
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     const { totalScore, totalQuestions } = calculateScore();
     
@@ -239,6 +281,31 @@ const Assessment = () => {
     
     setShowResults(true);
     window.scrollTo({ top: 0, behavior: 'smooth' });
+
+    // Save results to backend if a child is selected
+    if (selectedChild?._id) {
+      try {
+        const { categoryScores } = calculateScore();
+        const answersArray = Object.entries(answers).map(([questionId, val]) => ({
+          questionId,
+          optionIndex: val.optionIndex,
+          score: val.score
+        }));
+
+        await assessmentService.submitResult(selectedChild._id, {
+          totalScore,
+          totalQuestions,
+          categoryScores,
+          answers: answersArray,
+          assessmentLevel: 'all'
+        });
+
+        showToast(`Results saved! ${selectedChild.name}'s next quiz will be updated automatically.`, 'success');
+      } catch (err) {
+        console.error('Failed to save result:', err);
+        showToast('Could not save results to server. Results shown locally only.', 'warning');
+      }
+    }
   };
 
   const getTotalQuestions = () => {

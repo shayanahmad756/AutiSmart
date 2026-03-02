@@ -1,0 +1,281 @@
+/* ============================================================
+   Emotion Explorer Game Styles
+   ============================================================ */
+
+/* ---- Emoji Display Card ---- */
+.emotion-display {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--card-bg, #ffffff);
+  border-radius: 24px;
+  box-shadow: 0 8px 32px rgba(97, 195, 180, 0.18);
+  padding: 2.5rem 2rem;
+  margin-bottom: 2rem;
+  transition: box-shadow 0.3s ease;
+}
+
+.emotion-display:hover {
+  box-shadow: 0 12px 40px rgba(97, 195, 180, 0.28);
+}
+
+.emotion-emoji {
+  font-size: 6rem;
+  line-height: 1;
+  animation: emojiPulse 0.6s ease-out;
+  user-select: none;
+}
+
+@keyframes emojiPulse {
+  0%   { transform: scale(0.5); opacity: 0; }
+  60%  { transform: scale(1.15); opacity: 1; }
+  100% { transform: scale(1); }
+}
+
+.emotion-prompt {
+  font-size: 1.15rem;
+  font-weight: 600;
+  color: var(--text-muted, #6c757d);
+  margin-top: 1rem;
+  letter-spacing: 0.03em;
+}
+
+/* ---- Answer Buttons Grid ---- */
+.emotion-choices {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.85rem;
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.emotion-btn {
+  padding: 0.85rem 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border: 2.5px solid #d0d0d0;
+  border-radius: 16px;
+  background: var(--card-bg, #ffffff);
+  color: var(--text-primary, #212529);
+  cursor: pointer;
+  transition: all 0.18s ease;
+  outline: none;
+  letter-spacing: 0.02em;
+}
+
+.emotion-btn:hover:not(:disabled) {
+  border-color: #61C3B4;
+  background: rgba(97, 195, 180, 0.08);
+  transform: translateY(-2px);
+  box-shadow: 0 4px 16px rgba(97, 195, 180, 0.22);
+}
+
+.emotion-btn:active:not(:disabled) {
+  transform: translateY(0);
+}
+
+.emotion-btn.correct {
+  border-color: #28a745;
+  background: rgba(40, 167, 69, 0.12);
+  color: #155724;
+  animation: correctFlash 0.35s ease;
+}
+
+.emotion-btn.wrong {
+  border-color: #EC896E;
+  background: rgba(236, 137, 110, 0.12);
+  color: #7a2e1c;
+  animation: wrongShake 0.4s ease;
+}
+
+.emotion-btn.reveal-correct {
+  border-color: #28a745;
+  background: rgba(40, 167, 69, 0.08);
+  color: #155724;
+}
+
+.emotion-btn:disabled {
+  cursor: default;
+  opacity: 0.85;
+}
+
+@keyframes correctFlash {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.06); }
+  100% { transform: scale(1); }
+}
+
+@keyframes wrongShake {
+  0%, 100% { transform: translateX(0); }
+  20%  { transform: translateX(-6px); }
+  40%  { transform: translateX(6px); }
+  60%  { transform: translateX(-4px); }
+  80%  { transform: translateX(4px); }
+}
+
+/* ---- Timer Bar ---- */
+.timer-bar-wrap {
+  width: 100%;
+  background: #e9ecef;
+  border-radius: 8px;
+  height: 10px;
+  overflow: hidden;
+  margin-bottom: 1.25rem;
+}
+
+.timer-bar {
+  height: 100%;
+  border-radius: 8px;
+  transition: width 0.95s linear, background-color 0.3s ease;
+}
+
+.timer-bar.safe   { background: #61C3B4; }
+.timer-bar.warn   { background: #F6BA82; }
+.timer-bar.danger { background: #EC896E; }
+
+/* ---- Feedback Card ---- */
+.feedback-card {
+  background: linear-gradient(135deg, #e0f7f4 0%, #fef9ef 100%);
+  border-radius: 20px;
+  border: 1.5px solid rgba(97, 195, 180, 0.35);
+  padding: 1.75rem 1.5rem;
+  text-align: center;
+  animation: feedbackFade 0.5s ease-out;
+}
+
+.feedback-card .feedback-icon {
+  font-size: 2.8rem;
+  margin-bottom: 0.75rem;
+}
+
+.feedback-card p {
+  font-size: 1.05rem;
+  color: #2d5a54;
+  line-height: 1.65;
+  margin: 0;
+}
+
+@keyframes feedbackFade {
+  from { opacity: 0; transform: translateY(14px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+/* ---- Scenario Card (Story Mode Levels 7-10) ---- */
+.scenario-card {
+  background: var(--card-bg, #ffffff);
+  border-radius: 20px;
+  border-left: 5px solid #61C3B4;
+  box-shadow: 0 6px 28px rgba(97, 195, 180, 0.16);
+  padding: 1.75rem 1.5rem 1.25rem;
+  margin-bottom: 1.75rem;
+  animation: scenarioSlide 0.45s ease-out;
+  position: relative;
+}
+
+.scenario-icon {
+  font-size: 2rem;
+  margin-bottom: 0.6rem;
+  line-height: 1;
+}
+
+.scenario-text {
+  font-size: 1.1rem;
+  font-weight: 500;
+  line-height: 1.65;
+  color: var(--text-primary, #1a2332);
+  margin-bottom: 1rem;
+}
+
+.scenario-prompt {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #61C3B4;
+  margin: 0;
+  letter-spacing: 0.03em;
+}
+
+@keyframes scenarioSlide {
+  from { opacity: 0; transform: translateY(-12px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+[data-theme="dark"] .scenario-card {
+  background: #1e2d3d;
+  border-left-color: #61C3B4;
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.35);
+}
+
+[data-theme="dark"] .scenario-text {
+  color: #e0e0e0;
+}
+
+/* ---- Level Select Screen ---- */
+.level-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 0.75rem;
+}
+
+@media (min-width: 576px) {
+  .level-grid { grid-template-columns: repeat(5, 1fr); }
+}
+
+.level-btn {
+  border-radius: 12px;
+  font-weight: 600;
+  padding: 0.65rem 0.5rem;
+  font-size: 0.88rem;
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.level-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+/* ---- Dark Theme ---- */
+[data-theme="dark"] .emotion-display {
+  background: #1e2d3d;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+}
+
+[data-theme="dark"] .emotion-btn {
+  background: #1e2d3d;
+  border-color: #3d5166;
+  color: #e0e0e0;
+}
+
+[data-theme="dark"] .emotion-btn:hover:not(:disabled) {
+  border-color: #61C3B4;
+  background: rgba(97, 195, 180, 0.12);
+}
+
+[data-theme="dark"] .emotion-btn.correct {
+  background: rgba(40, 167, 69, 0.18);
+  color: #a8efbe;
+}
+
+[data-theme="dark"] .emotion-btn.wrong {
+  background: rgba(236, 137, 110, 0.18);
+  color: #f5b8a6;
+}
+
+[data-theme="dark"] .emotion-btn.reveal-correct {
+  background: rgba(40, 167, 69, 0.12);
+  color: #a8efbe;
+}
+
+[data-theme="dark"] .timer-bar-wrap {
+  background: #2c3e50;
+}
+
+[data-theme="dark"] .feedback-card {
+  background: linear-gradient(135deg, #1a3a35 0%, #2c2a1e 100%);
+  border-color: rgba(97, 195, 180, 0.25);
+}
+
+[data-theme="dark"] .feedback-card p {
+  color: #a0d8d3;
+}
