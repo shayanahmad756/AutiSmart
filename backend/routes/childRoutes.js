@@ -31,4 +31,7 @@ router.post('/children/:id/emotion-scenarios', childController.getEmotionScenari
 // Emotion Explorer AI feedback route
 router.post('/children/:id/emotion-feedback', childController.getEmotionFeedback);
 
+// Game recommendation route
+router.get('/children/:id/recommendations', childController.getChildGameRecommendations);
+
 export default router;

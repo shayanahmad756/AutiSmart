@@ -153,6 +153,19 @@ const childAPI = {
     }
   },
 
+  /**
+   * Get game recommendations for a child based on their latest assessment results.
+   * Returns ranked games with isRecommended flag and problemAreas tags.
+   */
+  getGameRecommendations: async (childId) => {
+    try {
+      const response = await http.get(`/caregiver/children/${childId}/recommendations`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch game recommendations' };
+    }
+  },
+
   downloadChildReportPDF: async (childId) => {
     try {
       // Get the auth token

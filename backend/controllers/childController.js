@@ -7,6 +7,7 @@ import { asyncHandler } from '../middleware/error.middleware.js';
 import PDFDocument from 'pdfkit';
 import geminiService from '../services/gemini.service.js';
 import childQuizService from '../services/childQuiz.service.js';
+import recommendationService from '../services/recommendation.service.js';
 
 // @desc    Add a new child
 // @route   POST /api/children
@@ -672,4 +673,22 @@ export const getEmotionFeedback = asyncHandler(async (req, res) => {
   });
 
   res.status(200).json({ success: true, feedback });
+});
+
+// @desc    Get game recommendations for a child based on assessment results
+// @route   GET /api/caregiver/children/:id/recommendations
+// @access  Private
+export const getChildGameRecommendations = asyncHandler(async (req, res) => {
+  const isExpertOrAdmin = req.user.role === 'expert' || req.user.role === 'admin';
+  const caregiverId = isExpertOrAdmin ? null : req.user._id;
+
+  // Verify the requesting user has access to this child
+  await childService.getChildById(req.params.id, caregiverId);
+
+  const data = await recommendationService.getGameRecommendations(req.params.id);
+
+  res.status(200).json({
+    success: true,
+    data,
+  });
 });
