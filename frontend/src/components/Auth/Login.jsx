@@ -104,7 +104,6 @@ const Login = () => {
                 {/* Email Field */}
                 <div className="mb-3">
                   <label htmlFor="email" className="form-label">
-                    <i className="bi bi-envelope-fill me-2"></i>
                     Email Address
                   </label>
                   <input
