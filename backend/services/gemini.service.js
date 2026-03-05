@@ -1,8 +1,8 @@
 /**
- * Gemini AI Service
- * Handles quiz generation using Google Gemini API
+ * AI Service (Groq)
+ * Handles quiz generation using Groq API
  */
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import Groq from 'groq-sdk';
 
 const VALID_CATEGORIES = [
   'Eye Contact',
@@ -13,27 +13,78 @@ const VALID_CATEGORIES = [
   'Focus & Attention'
 ];
 
+const GROQ_MODEL = 'llama-3.3-70b-versatile';
+
 class GeminiService {
   constructor() {
-    this.apiKey = process.env.GEMINI_API_KEY;
-    this.model = null;
+    this.groq = null;
+    this._initialized = false;
 
-    if (this.apiKey) {
+    // Rate-limit queue — free tier allows 30 RPM; enforce 1 call per 3 s → ≤ 20 RPM
+    this._queue = [];
+    this._processing = false;
+    this._MIN_INTERVAL_MS = 3000;
+    this._lastCallAt = 0;
+  }
+
+  /**
+   * Serialise every model.generateContent call so concurrent requests never
+   * burst past the free-tier rate limit (30 RPM).
+   */
+  _enqueue(fn) {
+    return new Promise((resolve, reject) => {
+      this._queue.push({ fn, resolve, reject });
+      this._drain();
+    });
+  }
+
+  async _drain() {
+    if (this._processing || this._queue.length === 0) return;
+    this._processing = true;
+    while (this._queue.length > 0) {
+      const wait = Math.max(0, this._MIN_INTERVAL_MS - (Date.now() - this._lastCallAt));
+      if (wait > 0) await new Promise(r => setTimeout(r, wait));
+      const { fn, resolve, reject } = this._queue.shift();
       try {
-        const genAI = new GoogleGenerativeAI(this.apiKey);
-        this.model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        this._lastCallAt = Date.now();
+        resolve(await fn());
       } catch (err) {
-        console.warn('⚠️  Gemini model initialization failed:', err.message);
+        reject(err);
       }
+    }
+    this._processing = false;
+  }
+
+  // Lazy-initialize on first use — guarantees dotenv has already run
+  _init() {
+    if (this._initialized) return;
+    this._initialized = true;
+
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) {
+      console.error('[Groq] ❌ GROQ_API_KEY is missing from environment variables. Add it to backend/.env');
+      return;
+    }
+
+    const maskedKey = `${apiKey.slice(0, 6)}...${apiKey.slice(-4)}`;
+    console.log(`[Groq] 🔑 Initializing with API key: ${maskedKey}`);
+
+    try {
+      this.groq = new Groq({ apiKey });
+      console.log(`[Groq] ✅ API key accepted — model "${GROQ_MODEL}" initialized and ready`);
+    } catch (err) {
+      console.error('[Groq] ❌ Initialization failed — invalid API key or network error:', err.message);
+      this.groq = null;
     }
   }
 
   _checkAvailability() {
-    if (!this.apiKey) {
-      throw new Error('Gemini API key not configured. Please add GEMINI_API_KEY to .env');
+    this._init();
+    if (!process.env.GROQ_API_KEY) {
+      throw new Error('Groq API key not configured. Please add GROQ_API_KEY to .env');
     }
-    if (!this.model) {
-      throw new Error('Gemini model is not initialized. Check your GEMINI_API_KEY.');
+    if (!this.groq) {
+      throw new Error('Groq client is not initialized. Check your GROQ_API_KEY.');
     }
   }
 
@@ -51,6 +102,7 @@ class GeminiService {
    * @param {Object} params - { level, categories, count }
    */
   async generateQuizQuestions({ level, categories = VALID_CATEGORIES, count = 5 }) {
+    console.log(`[Groq] generateQuizQuestions called — level: ${level}, count: ${count}`);
     this._checkAvailability();
 
     const levelDescriptions = {
@@ -73,30 +125,41 @@ IMPORTANT RULES:
 - Distribute categories as evenly as possible across the questions
 - Each category must be exactly one of: ${VALID_CATEGORIES.join(', ')}
 
-Return ONLY a valid JSON array (no markdown, no extra text) in this exact format:
-[
-  {
-    "id": "${level}_gen_1",
-    "category": "Social Interaction",
-    "question": "Question text here?",
-    "options": ["Positive option", "Mixed option", "Concerning option"],
-    "scores": [1, 2, 3]
-  }
-]`;
+Return a JSON object with a "questions" key containing the array, in this exact format:
+{
+  "questions": [
+    {
+      "id": "${level}_gen_1",
+      "category": "Social Interaction",
+      "question": "Question text here?",
+      "options": ["Positive option", "Mixed option", "Concerning option"],
+      "scores": [1, 2, 3]
+    }
+  ]
+}`;
 
-    const result = await this.model.generateContent(prompt);
-    const text = result.response.text();
+    const completion = await this._enqueue(() => this.groq.chat.completions.create({
+      model: GROQ_MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
+      temperature: 0.7
+    }));
+    const text = completion.choices[0]?.message?.content ?? '';
 
     let questions;
     try {
-      questions = this._parseJSON(text);
-    } catch {
-      throw new Error('Gemini returned invalid JSON. Please try again.');
+      const parsed = this._parseJSON(text);
+      questions = Array.isArray(parsed) ? parsed : parsed.questions;
+    } catch (parseErr) {
+      console.error('[Groq] ❌ generateQuizQuestions — failed to parse JSON response:', parseErr.message);
+      throw new Error('Groq returned invalid JSON. Please try again.');
     }
 
     if (!Array.isArray(questions)) {
-      throw new Error('Gemini did not return a question array. Please try again.');
+      console.error('[Groq] ❌ generateQuizQuestions — response is not an array');
+      throw new Error('Groq did not return a question array. Please try again.');
     }
+    console.log(`[Groq] ✅ generateQuizQuestions — ${questions.length} questions generated for level: ${level}`);
 
     // Validate and sanitize each question
     const timestamp = Date.now();
@@ -113,7 +176,8 @@ Return ONLY a valid JSON array (no markdown, no extra text) in this exact format
    * Generate personalized quiz for a specific child based on their past results
    * @param {Object} params - { child, level, pastResults }
    */
-  async generateChildQuiz({ child, level, pastResults = [] }) {
+  async generateChildQuiz({ child, pastResults = [] }) {
+    console.log(`[Groq] generateChildQuiz called — child: "${child.name}" (${child._id}), pastResults: ${pastResults.length}`);
     this._checkAvailability();
 
     // Build a summary of weak categories from past results
@@ -145,16 +209,11 @@ Return ONLY a valid JSON array (no markdown, no extra text) in this exact format
 
     const focusCategories = weakCategories.length > 0 ? weakCategories : VALID_CATEGORIES;
 
-    const levelDescriptions = {
-      easy: 'basic observation-based questions',
-      intermediate: 'situational and behavior-awareness questions',
-      advanced: 'complex reasoning and social-thinking questions',
-      sensory: 'sensory processing and attention questions'
-    };
-
     const childContext = [
       `Name: ${child.name}`,
       `Age: ${child.age} years old`,
+      child.gender ? `Gender: ${child.gender}` : null,
+      child.dateOfBirth ? `Date of Birth: ${child.dateOfBirth}` : null,
       child.diagnosis ? `Diagnosis notes: ${child.diagnosis}` : null,
       child.specialNeeds ? `Special needs: ${child.specialNeeds}` : null,
       child.notes ? `Additional notes: ${child.notes}` : null,
@@ -172,8 +231,7 @@ Generate 10 personalized multiple-choice assessment questions for the following 
 Child Profile:
 ${childContext}
 
-Assessment level: ${level} (${levelDescriptions[level] || level})
-Focus mainly on these categories (areas needing attention): ${focusCategories.join(', ')}
+Focus on these categories (areas needing most attention): ${focusCategories.join(', ')}
 
 IMPORTANT RULES:
 - Each question must have EXACTLY 3 answer options
@@ -182,34 +240,65 @@ IMPORTANT RULES:
 - Questions should be observable behaviors a caregiver can report on
 - Each category must be exactly one of: ${VALID_CATEGORIES.join(', ')}
 
-Return ONLY a valid JSON array (no markdown, no extra text) in this exact format:
-[
-  {
-    "id": "${child._id}_${level}_1",
-    "category": "Social Interaction",
-    "question": "Question text here?",
-    "options": ["Positive option", "Mixed option", "Concerning option"],
-    "scores": [1, 2, 3]
-  }
-]`;
+Return a JSON object with a "questions" key containing the array, in this exact format:
+{
+  "questions": [
+    {
+      "id": "${child._id}_quiz_1",
+      "category": "Social Interaction",
+      "question": "Question text here?",
+      "options": ["Positive option", "Mixed option", "Concerning option"],
+      "scores": [1, 2, 3]
+    }
+  ]
+}`;
 
-    const result = await this.model.generateContent(prompt);
-    const text = result.response.text();
+    // Retry on 429 rate-limit errors, respecting the suggested retry delay
+    let completion;
+    let attempt = 0;
+    const maxAttempts = 3;
+    while (attempt < maxAttempts) {
+      try {
+        completion = await this._enqueue(() => this.groq.chat.completions.create({
+          model: GROQ_MODEL,
+          messages: [{ role: 'user', content: prompt }],
+          response_format: { type: 'json_object' },
+          temperature: 0.7
+        }));
+        break;
+      } catch (err) {
+        attempt++;
+        const retryMatch = err.message?.match(/retry in (\d+(\.\d+)?)s/i);
+        const waitMs = retryMatch ? Math.ceil(parseFloat(retryMatch[1])) * 1000 + 2000 : 60_000;
+        if (attempt < maxAttempts && (err.status === 429 || err.message?.includes('429'))) {
+          console.warn(`[Groq] ⚠️  Rate limited (attempt ${attempt}/${maxAttempts}). Retrying in ${waitMs / 1000}s...`);
+          await new Promise(r => setTimeout(r, waitMs));
+        } else {
+          console.error(`[Groq] ❌ generateChildQuiz failed after ${attempt} attempt(s):`, err.message);
+          throw err;
+        }
+      }
+    }
+    const text = completion.choices[0]?.message?.content ?? '';
 
     let questions;
     try {
-      questions = this._parseJSON(text);
-    } catch {
-      throw new Error('Gemini returned invalid JSON for child quiz. Please try again.');
+      const parsed = this._parseJSON(text);
+      questions = Array.isArray(parsed) ? parsed : parsed.questions;
+    } catch (parseErr) {
+      console.error(`[Groq] ❌ generateChildQuiz — failed to parse JSON for child "${child.name}":`, parseErr.message);
+      throw new Error('Groq returned invalid JSON for child quiz. Please try again.');
     }
 
     if (!Array.isArray(questions)) {
-      throw new Error('Gemini did not return a question array for child quiz.');
+      console.error(`[Groq] ❌ generateChildQuiz — non-array response for child "${child.name}"`);
+      throw new Error('Groq did not return a question array for child quiz.');
     }
+    console.log(`[Groq] ✅ generateChildQuiz — ${questions.length} questions generated for "${child.name}"`);
 
     const timestamp = Date.now();
     return questions.map((q, i) => ({
-      id: q.id || `${child._id}_${level}_${timestamp}_${i + 1}`,
+      id: q.id || `${child._id}_quiz_${timestamp}_${i + 1}`,
       category: VALID_CATEGORIES.includes(q.category) ? q.category : focusCategories[i % focusCategories.length],
       question: q.question || '',
       options: Array.isArray(q.options) && q.options.length === 3 ? q.options : ['Yes', 'Sometimes', 'No'],
@@ -223,6 +312,7 @@ Return ONLY a valid JSON array (no markdown, no extra text) in this exact format
    * @returns {Array} Array of { emotion, scenario, distractors }
    */
   async generateEmotionScenarios({ child, level, levelName, pool, count = 10 }) {
+    console.log(`[Groq] generateEmotionScenarios called — child: "${child.name}", level: ${level} (${levelName}), count: ${count}`);
     this._checkAvailability();
 
     const prompt = `You are designing an emotion-recognition game for a child with autism.
@@ -245,27 +335,35 @@ Rules:
 4. Situations should be relatable everyday experiences for a child.
 5. Do NOT repeat the same emotion more than twice across all scenarios.
 
-Return ONLY a valid JSON array (no markdown, no extra text):
-[
-  {
-    "emotion": "Disappointed",
-    "scenario": "You practiced drawing a picture for days, but your teacher chose someone else's work for the display.",
-    "distractors": ["Sad", "Frustrated", "Annoyed"]
-  }
-]`;
+Return a JSON object with a "scenarios" key containing the array, in this exact format:
+{
+  "scenarios": [
+    {
+      "emotion": "Disappointed",
+      "scenario": "You practiced drawing a picture for days, but your teacher chose someone else's work for the display.",
+      "distractors": ["Sad", "Frustrated", "Annoyed"]
+    }
+  ]
+}`;
 
-    const result = await this.model.generateContent(prompt);
-    const text = result.response.text();
+    const completion = await this._enqueue(() => this.groq.chat.completions.create({
+      model: GROQ_MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      response_format: { type: 'json_object' },
+      temperature: 0.7
+    }));
+    const text = completion.choices[0]?.message?.content ?? '';
 
     let raw;
     try {
-      raw = this._parseJSON(text);
+      const parsed = this._parseJSON(text);
+      raw = Array.isArray(parsed) ? parsed : parsed.scenarios;
     } catch {
-      throw new Error('Gemini returned invalid JSON for emotion scenarios.');
+      throw new Error('Groq returned invalid JSON for emotion scenarios.');
     }
 
     if (!Array.isArray(raw)) {
-      throw new Error('Gemini did not return a scenario array.');
+      throw new Error('Groq did not return a scenario array.');
     }
 
     const poolSet = new Set(pool);
@@ -294,6 +392,7 @@ Return ONLY a valid JSON array (no markdown, no extra text):
    * @returns {string} A short, age-appropriate feedback message
    */
   async generateEmotionFeedback({ child, level, levelName, score, maxScore, correctAnswers, incorrectAnswers, emotionsStruggled = [] }) {
+    console.log(`[Groq] generateEmotionFeedback called — child: "${child.name}", level: ${level}, score: ${score}/${maxScore}`);
     this._checkAvailability();
 
     const percentage = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
@@ -333,8 +432,12 @@ Write a short (2–3 sentences MAX) feedback message that:
 
 Return ONLY the plain text message — no quotes, no markdown, no extra commentary.`;
 
-    const result = await this.model.generateContent(prompt);
-    const feedback = result.response.text().trim();
+    const completion = await this._enqueue(() => this.groq.chat.completions.create({
+      model: GROQ_MODEL,
+      messages: [{ role: 'user', content: prompt }],
+      temperature: 0.7
+    }));
+    const feedback = (completion.choices[0]?.message?.content ?? '').trim();
     return feedback || `Amazing work, ${child.name}! You did a wonderful job exploring emotions today. Keep it up!`;
   }
 }

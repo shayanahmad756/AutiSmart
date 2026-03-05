@@ -26,55 +26,10 @@ class AssessmentService {
   }
 
   /**
-   * Get all assessments (Admin)
+   * Get all assessments (Admin - read-only reference)
    */
   async getAllAssessments(filters = {}) {
     return await assessmentAPI.getAllAssessments(filters);
-  }
-
-  /**
-   * Get assessment by ID (Admin)
-   */
-  async getAssessmentById(assessmentId) {
-    return await assessmentAPI.getAssessmentById(assessmentId);
-  }
-
-  /**
-   * Create new assessment (Admin)
-   */
-  async createAssessment(assessmentData) {
-    if (!assessmentData.title || !assessmentData.level || !assessmentData.description) {
-      throw new Error('Title, level, and description are required');
-    }
-    return await assessmentAPI.createAssessment(assessmentData);
-  }
-
-  /**
-   * Update assessment (Admin)
-   */
-  async updateAssessment(assessmentId, assessmentData) {
-    return await assessmentAPI.updateAssessment(assessmentId, assessmentData);
-  }
-
-  /**
-   * Toggle assessment status (Admin)
-   */
-  async toggleAssessmentStatus(assessmentId) {
-    return await assessmentAPI.toggleAssessmentStatus(assessmentId);
-  }
-
-  /**
-   * Delete assessment (Admin)
-   */
-  async deleteAssessment(assessmentId) {
-    return await assessmentAPI.deleteAssessment(assessmentId);
-  }
-
-  /**
-   * AI: Generate questions using Gemini
-   */
-  async generateQuestions({ level, categories, count }) {
-    return await assessmentAPI.generateQuestions({ level, categories, count });
   }
 
   /**

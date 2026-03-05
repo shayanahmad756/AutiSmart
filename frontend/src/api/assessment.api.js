@@ -41,54 +41,6 @@ const assessmentAPI = {
   },
 
   /**
-   * Admin: Create new assessment
-   */
-  createAssessment: async (assessmentData) => {
-    try {
-      const response = await http.post('/assessments/admin', assessmentData);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to create assessment' };
-    }
-  },
-
-  /**
-   * Admin: Update assessment
-   */
-  updateAssessment: async (assessmentId, assessmentData) => {
-    try {
-      const response = await http.put(`/assessments/admin/${assessmentId}`, assessmentData);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to update assessment' };
-    }
-  },
-
-  /**
-   * Admin: Delete assessment
-   */
-  deleteAssessment: async (assessmentId) => {
-    try {
-      const response = await http.delete(`/assessments/admin/${assessmentId}`);
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to delete assessment' };
-    }
-  },
-
-  /**
-   * AI: Generate questions using Gemini
-   */
-  generateQuestions: async ({ level, categories, count }) => {
-    try {
-      const response = await http.post('/assessments/generate-questions', { level, categories, count });
-      return response.data;
-    } catch (error) {
-      throw error.response?.data || { message: 'Failed to generate questions' };
-    }
-  },
-
-  /**
    * Get personalized quiz for a child
    */
   getChildQuiz: async (childId) => {
@@ -103,9 +55,9 @@ const assessmentAPI = {
   /**
    * Admin: Generate personalized quiz for a child
    */
-  generateChildQuiz: async (childId, level) => {
+  generateChildQuiz: async (childId) => {
     try {
-      const response = await http.post(`/assessments/child/${childId}/generate`, { level });
+      const response = await http.post(`/assessments/child/${childId}/generate`);
       return response.data;
     } catch (error) {
       throw error.response?.data || { message: 'Failed to generate child quiz' };

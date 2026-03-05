@@ -2,7 +2,6 @@ import express from 'express';
 import Assessment from '../models/Assessment.js';
 import Child from '../models/Child.js';
 import { authMiddleware, roleMiddleware } from '../middleware/index.js';
-import geminiService from '../services/gemini.service.js';
 import assessmentResultService from '../services/assessmentResult.service.js';
 import childQuizService from '../services/childQuiz.service.js';
 
@@ -45,7 +44,7 @@ router.get('/', async (req, res) => {
 });
 
 // @route   GET /api/assessments/admin/all
-// @desc    Get ALL assessments for admin (including inactive)
+// @desc    Get ALL assessments for admin reference (read-only)
 // @access  Admin
 router.get('/admin/all', roleMiddleware('admin'), async (req, res) => {
   try {
@@ -53,95 +52,6 @@ router.get('/admin/all', roleMiddleware('admin'), async (req, res) => {
     res.status(200).json({ success: true, data: assessments });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// @route   POST /api/assessments/admin
-// @desc    Create a new assessment
-// @access  Admin
-router.post('/admin', roleMiddleware('admin'), async (req, res) => {
-  try {
-    const { level, title, description, questions, formDefinition, isActive } = req.body;
-
-    if (!level || !title || !description) {
-      return res.status(400).json({ success: false, message: 'Level, title, and description are required' });
-    }
-
-    const assessment = await Assessment.create({
-      level, title, description,
-      questions: questions || [],
-      formDefinition: formDefinition || [],
-      isActive: isActive !== undefined ? isActive : true,
-      createdBy: req.user._id,
-      updatedBy: req.user._id
-    });
-
-    res.status(201).json({ success: true, data: assessment });
-  } catch (error) {
-    console.error('Create assessment error:', error);
-    res.status(400).json({ success: false, message: error.message });
-  }
-});
-
-// @route   PUT /api/assessments/admin/:id
-// @desc    Update an assessment
-// @access  Admin
-router.put('/admin/:id', roleMiddleware('admin'), async (req, res) => {
-  try {
-    const { level, title, description, questions, formDefinition, isActive } = req.body;
-
-    const assessment = await Assessment.findByIdAndUpdate(
-      req.params.id,
-      {
-        ...(level && { level }),
-        ...(title && { title }),
-        ...(description && { description }),
-        ...(questions !== undefined && { questions }),
-        ...(formDefinition !== undefined && { formDefinition }),
-        ...(isActive !== undefined && { isActive }),
-        updatedBy: req.user._id
-      },
-      { new: true, runValidators: true }
-    );
-
-    if (!assessment) return res.status(404).json({ success: false, message: 'Assessment not found' });
-
-    res.status(200).json({ success: true, data: assessment });
-  } catch (error) {
-    console.error('Update assessment error:', error);
-    res.status(400).json({ success: false, message: error.message });
-  }
-});
-
-// @route   DELETE /api/assessments/admin/:id
-// @desc    Delete an assessment
-// @access  Admin
-router.delete('/admin/:id', roleMiddleware('admin'), async (req, res) => {
-  try {
-    const assessment = await Assessment.findByIdAndDelete(req.params.id);
-    if (!assessment) return res.status(404).json({ success: false, message: 'Assessment not found' });
-    res.status(200).json({ success: true, message: 'Assessment deleted successfully' });
-  } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
-  }
-});
-
-// ─────────────────────────────────────────
-// GEMINI AI — Generate Questions
-// ─────────────────────────────────────────
-
-// @route   POST /api/assessments/generate-questions
-// @desc    Generate quiz questions using Gemini AI
-// @access  Admin
-router.post('/generate-questions', roleMiddleware('admin'), async (req, res) => {
-  try {
-    const { level = 'easy', categories, count = 5 } = req.body;
-    const questions = await geminiService.generateQuizQuestions({ level, categories, count });
-    res.status(200).json({ success: true, data: { questions } });
-  } catch (error) {
-    console.error('Gemini generate questions error:', error);
-    const statusCode = error.message.includes('not configured') ? 503 : 500;
-    res.status(statusCode).json({ success: false, message: error.message });
   }
 });
 
@@ -176,17 +86,16 @@ router.get('/child/:childId/quiz', async (req, res) => {
 router.post('/child/:childId/generate', roleMiddleware('admin'), async (req, res) => {
   try {
     const { childId } = req.params;
-    const { level } = req.body;
 
     const child = await Child.findById(childId).lean();
     if (!child) return res.status(404).json({ success: false, message: 'Child not found' });
 
-    const quizzes = await childQuizService.generateAndSave(childId, level, req.user._id);
+    const quiz = await childQuizService.generateAndSave(childId, req.user._id);
 
     res.status(200).json({
       success: true,
       message: `Quiz generated for ${child.name}`,
-      data: { generated: quizzes.length, childName: child.name }
+      data: { childName: child.name, questions: quiz.questions.length }
     });
   } catch (error) {
     console.error('Generate child quiz error:', error);

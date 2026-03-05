@@ -1,15 +1,12 @@
+import './env.js'; // Must be first — loads .env before any service singleton is constructed
 import express from 'express';
 import mongoose from 'mongoose';
-import dotenv from 'dotenv';
 import cors from 'cors';
 import authRoutes from './routes/authRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import childRoutes from './routes/childRoutes.js';
 import assessmentRoutes from './routes/assessmentRoutes.js';
 import { verifyEmailConfig } from './config/email.js';
-
-// Load environment variables
-dotenv.config();
 
 // Initialize express app
 const app = express();

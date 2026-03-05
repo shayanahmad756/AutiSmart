@@ -6,12 +6,21 @@ import childService from '../services/child.service.js';
 import { asyncHandler } from '../middleware/error.middleware.js';
 import PDFDocument from 'pdfkit';
 import geminiService from '../services/gemini.service.js';
+import childQuizService from '../services/childQuiz.service.js';
 
 // @desc    Add a new child
 // @route   POST /api/children
 // @access  Private (Caregiver)
 export const addChild = asyncHandler(async (req, res) => {
   const child = await childService.addChild(req.user._id, req.body);
+
+  // Fire-and-forget: generate personalized Gemini quiz for this child
+  console.log(`[ChildQuiz] Auto-generating quiz for new child "${child.name}" (${child._id})...`);
+  childQuizService.generateAndSave(child._id, null).then(() => {
+    console.log(`[ChildQuiz] ✅ Quiz generated for "${child.name}"`);
+  }).catch(err => {
+    console.error(`[ChildQuiz] ❌ Auto-generation failed for "${child.name}":`, err.message);
+  });
 
   res.status(201).json({
     success: true,
@@ -74,6 +83,14 @@ export const getChild = asyncHandler(async (req, res) => {
 // @access  Private (Caregiver)
 export const updateChild = asyncHandler(async (req, res) => {
   const child = await childService.updateChild(req.params.id, req.user._id, req.body);
+
+  // Fire-and-forget: regenerate quiz so it reflects updated profile
+  console.log(`[ChildQuiz] Profile updated for "${child.name}" — regenerating quiz...`);
+  childQuizService.generateAndSave(child._id, null).then(() => {
+    console.log(`[ChildQuiz] ✅ Quiz regenerated for "${child.name}"`);
+  }).catch(err => {
+    console.error(`[ChildQuiz] ❌ Regeneration failed for "${child.name}":`, err.message);
+  });
 
   res.status(200).json({
     success: true,
