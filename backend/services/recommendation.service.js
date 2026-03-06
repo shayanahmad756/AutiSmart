@@ -2,8 +2,6 @@
  * Recommendation Service
  * Analyzes a child's latest assessment category scores and ranks therapy games
  * by how much they address the child's specific autism problem areas.
- *
- * This is the Node.js mirror of backend/recommendation_system.py.
  */
 import assessmentResultDataAccess from '../dataAccess/assessmentResult.dataAccess.js';
 
