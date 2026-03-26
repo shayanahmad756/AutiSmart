@@ -14,6 +14,7 @@ const Sidebar = () => {
     { path: '/communication', icon: 'bi-chat-dots', label: 'Communication' },
     { path: '/resources', icon: 'bi-book', label: 'Resources' },
     { path: '/leaderboard', icon: 'bi-trophy', label: 'Leaderboard' },
+    { path: '/autism-detection', icon: 'bi-camera-fill', label: 'Autism Detection' },
   ];
   
   const adminItems = [

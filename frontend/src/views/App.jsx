@@ -41,6 +41,7 @@ import Notifications from '../pages/Notifications';
 import Help from '../pages/Help';
 import ChildManagement from '../pages/ChildManagement';
 import ChildReports from '../pages/ChildReports';
+import AutismDetection from '../pages/AutismDetection';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -252,6 +253,14 @@ function AppContent() {
           element={
             <ProtectedRoute>
               <ChildReports />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/autism-detection"
+          element={
+            <ProtectedRoute>
+              <AutismDetection />
             </ProtectedRoute>
           }
         />

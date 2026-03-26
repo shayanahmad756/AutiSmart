@@ -41,7 +41,15 @@ const childSchema = new mongoose.Schema({
   profileImage: {
     type: String,
     default: ''
-  }
+  },
+  autismDetections: [
+    {
+      date: { type: Date, default: Date.now },
+      label: { type: String, enum: ['autistic', 'non_autistic'], required: true },
+      confidence: { type: Number, required: true },
+      note: { type: String, default: '' }
+    }
+  ]
 }, {
   timestamps: true,
   toJSON: { virtuals: true },

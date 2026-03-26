@@ -205,6 +205,21 @@ const Navbar = () => {
               </>
             )}
             
+            {/* Run Detection button — visible to authenticated users only */}
+            {isAuthenticated && (
+              <li className="nav-item ms-2">
+                <Link
+                  className="btn btn-sm px-3 py-2 shadow-sm"
+                  to="/autism-detection"
+                  onClick={closeMenu}
+                  style={{ background: '#61C3B4', color: '#fff', borderRadius: '8px', fontWeight: '500', whiteSpace: 'nowrap' }}
+                >
+                  <i className="bi bi-camera-fill me-2"></i>
+                  Run Detection
+                </Link>
+              </li>
+            )}
+
             {/* Theme Toggle Button */}
             <li className="nav-item ms-2">
               <ThemeToggle />

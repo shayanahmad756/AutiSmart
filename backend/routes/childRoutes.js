@@ -1,6 +1,7 @@
 import express from 'express';
 import * as childController from '../controllers/childController.js';
 import { verifyToken } from '../middleware/index.js';
+import { uploadImage } from '../middleware/upload.middleware.js';
 
 const router = express.Router();
 
@@ -33,5 +34,9 @@ router.post('/children/:id/emotion-feedback', childController.getEmotionFeedback
 
 // Game recommendation route
 router.get('/children/:id/recommendations', childController.getChildGameRecommendations);
+
+// Autism screen-based detection routes
+router.post('/children/:id/autism-detect', uploadImage, childController.autismDetect);
+router.get('/children/:id/autism-detections', childController.getAutismDetections);
 
 export default router;

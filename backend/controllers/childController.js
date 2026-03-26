@@ -8,6 +8,11 @@ import PDFDocument from 'pdfkit';
 import geminiService from '../services/gemini.service.js';
 import childQuizService from '../services/childQuiz.service.js';
 import recommendationService from '../services/recommendation.service.js';
+import axios from 'axios';
+import FormData from 'form-data';
+import Child from '../models/Child.js';
+
+const FLASK_URL = process.env.FLASK_URL || 'http://localhost:5001';
 
 // @desc    Add a new child
 // @route   POST /api/children
@@ -690,5 +695,88 @@ export const getChildGameRecommendations = asyncHandler(async (req, res) => {
   res.status(200).json({
     success: true,
     data,
+  });
+});
+
+// @desc    Run autism screen-based detection for a child
+// @route   POST /api/caregiver/children/:id/autism-detect
+// @access  Private (Caregiver)
+export const autismDetect = asyncHandler(async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ success: false, message: 'No image file provided. Include an image with field name "image".' });
+  }
+
+  // Verify the child belongs to the requesting caregiver
+  const child = await childService.getChildById(req.params.id, req.user._id);
+
+  // Forward image buffer to Python Flask microservice
+  const form = new FormData();
+  form.append('file', req.file.buffer, {
+    filename: req.file.originalname || 'upload.jpg',
+    contentType: req.file.mimetype,
+  });
+
+  let flaskResult;
+  try {
+    const flaskResponse = await axios.post(`${FLASK_URL}/predict`, form, {
+      headers: form.getHeaders(),
+      timeout: 30000,
+    });
+    flaskResult = flaskResponse.data;
+  } catch (err) {
+    const isConnectionError = err.code === 'ECONNREFUSED' || err.code === 'ENOTFOUND';
+    if (isConnectionError) {
+      return res.status(503).json({
+        success: false,
+        message: 'Autism detection service is not running. Please start the Flask microservice (python flask_api.py).',
+      });
+    }
+    const detail = err.response?.data?.error || err.message;
+    return res.status(502).json({ success: false, message: `Detection service error: ${detail}` });
+  }
+
+  // Persist result in the child document
+  const detection = {
+    date: new Date(),
+    label: flaskResult.label,
+    confidence: flaskResult.confidence,
+    note: req.body.note || '',
+  };
+
+  await Child.findByIdAndUpdate(
+    child._id || child.id,
+    { $push: { autismDetections: { $each: [detection], $position: 0 } } }
+  );
+
+  res.status(200).json({
+    success: true,
+    message: 'Detection completed and saved.',
+    data: {
+      ...flaskResult,
+      ...detection,
+      childName: child.name,
+    },
+  });
+});
+
+// @desc    Get stored autism detection history for a child
+// @route   GET /api/caregiver/children/:id/autism-detections
+// @access  Private (Caregiver)
+export const getAutismDetections = asyncHandler(async (req, res) => {
+  // Allow caregivers and experts/admins to view history
+  const isExpertOrAdmin = req.user.role === 'expert' || req.user.role === 'admin';
+  const caregiverId = isExpertOrAdmin ? null : req.user._id;
+
+  const child = await childService.getChildById(req.params.id, caregiverId);
+
+  const childDoc = await Child.findById(child._id || child.id).select('autismDetections name');
+
+  res.status(200).json({
+    success: true,
+    data: {
+      childName: childDoc.name,
+      detections: childDoc.autismDetections || [],
+      count: (childDoc.autismDetections || []).length,
+    },
   });
 });

@@ -208,6 +208,34 @@ const childAPI = {
       throw { message: error.message || 'Failed to download report' };
     }
   },
+
+  /**
+   * Run autism screen-based detection for a child.
+   * @param {string} childId
+   * @param {FormData} formData - must contain field "image" with the image file, optionally "note"
+   */
+  detectAutism: async (childId, formData) => {
+    try {
+      const response = await http.post(`/caregiver/children/${childId}/autism-detect`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to run autism detection' };
+    }
+  },
+
+  /**
+   * Get stored autism detection history for a child.
+   */
+  getAutismDetections: async (childId) => {
+    try {
+      const response = await http.get(`/caregiver/children/${childId}/autism-detections`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch detection history' };
+    }
+  },
 };
 
 export default childAPI;
