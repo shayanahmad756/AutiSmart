@@ -5,6 +5,7 @@
 import userService from '../services/user.service.js';
 import assessmentService from '../services/assessment.service.js';
 import { asyncHandler } from '../middleware/error.middleware.js';
+import User from '../models/User.js';
 
 // @desc    Create new user
 // @route   POST /api/admin/users
@@ -184,4 +185,139 @@ export const toggleAssessmentStatus = asyncHandler(async (req, res) => {
     message: 'Assessment status updated',
     data: assessment
   });
+});
+
+// @desc    Get all pending expert requests across all caregivers
+// @route   GET /api/admin/expert-requests
+// @access  Private (Admin)
+export const getExpertRequests = asyncHandler(async (req, res) => {
+  const caregivers = await User.find({
+    role: 'caregiver',
+    'expertRequests.status': 'pending',
+  })
+    .populate('expertRequests.expertId', 'name email')
+    .lean();
+
+  const requests = [];
+  for (const caregiver of caregivers) {
+    for (const r of caregiver.expertRequests) {
+      if (r.status === 'pending') {
+        requests.push({
+          caregiverId: caregiver._id,
+          caregiverName: caregiver.name,
+          caregiverEmail: caregiver.email,
+          expertId: r.expertId?._id,
+          expertName: r.expertId?.name,
+          expertEmail: r.expertId?.email,
+          requestedAt: r.requestedAt,
+          requestId: r._id,
+        });
+      }
+    }
+  }
+
+  res.status(200).json({ success: true, count: requests.length, data: requests });
+});
+
+// @desc    Get all approved expert assignments
+// @route   GET /api/admin/expert-assignments
+// @access  Private (Admin)
+export const getExpertAssignments = asyncHandler(async (req, res) => {
+  const caregivers = await User.find({
+    role: 'caregiver',
+    'expertRequests.status': 'approved',
+  })
+    .populate('expertRequests.expertId', 'name email')
+    .lean();
+
+  const assignments = [];
+  for (const caregiver of caregivers) {
+    for (const r of caregiver.expertRequests) {
+      if (r.status === 'approved') {
+        assignments.push({
+          caregiverId: caregiver._id,
+          caregiverName: caregiver.name,
+          caregiverEmail: caregiver.email,
+          expertId: r.expertId?._id,
+          expertName: r.expertId?.name,
+          expertEmail: r.expertId?.email,
+          requestedAt: r.requestedAt,
+        });
+      }
+    }
+  }
+
+  res.status(200).json({ success: true, count: assignments.length, data: assignments });
+});
+
+// @desc    Approve an expert request
+// @route   PUT /api/admin/expert-requests/:caregiverId/:expertId/approve
+// @access  Private (Admin)
+export const approveExpertRequest = asyncHandler(async (req, res) => {
+  const { caregiverId, expertId } = req.params;
+  const caregiver = await User.findById(caregiverId);
+
+  if (!caregiver) {
+    return res.status(404).json({ success: false, message: 'Caregiver not found' });
+  }
+
+  const request = caregiver.expertRequests.find(
+    (r) => r.expertId.toString() === expertId && r.status === 'pending'
+  );
+  if (!request) {
+    return res.status(404).json({ success: false, message: 'Pending request not found' });
+  }
+
+  request.status = 'approved';
+  await caregiver.save();
+
+  res.status(200).json({ success: true, message: 'Expert assignment approved' });
+});
+
+// @desc    Reject an expert request
+// @route   PUT /api/admin/expert-requests/:caregiverId/:expertId/reject
+// @access  Private (Admin)
+export const rejectExpertRequest = asyncHandler(async (req, res) => {
+  const { caregiverId, expertId } = req.params;
+  const caregiver = await User.findById(caregiverId);
+
+  if (!caregiver) {
+    return res.status(404).json({ success: false, message: 'Caregiver not found' });
+  }
+
+  const request = caregiver.expertRequests.find(
+    (r) => r.expertId.toString() === expertId && r.status === 'pending'
+  );
+  if (!request) {
+    return res.status(404).json({ success: false, message: 'Pending request not found' });
+  }
+
+  request.status = 'rejected';
+  await caregiver.save();
+
+  res.status(200).json({ success: true, message: 'Expert request rejected' });
+});
+
+// @desc    Remove an active expert assignment
+// @route   DELETE /api/admin/expert-assignments/:caregiverId/:expertId
+// @access  Private (Admin)
+export const removeExpertAssignment = asyncHandler(async (req, res) => {
+  const { caregiverId, expertId } = req.params;
+  const caregiver = await User.findById(caregiverId);
+
+  if (!caregiver) {
+    return res.status(404).json({ success: false, message: 'Caregiver not found' });
+  }
+
+  const idx = caregiver.expertRequests.findIndex(
+    (r) => r.expertId.toString() === expertId && r.status === 'approved'
+  );
+  if (idx === -1) {
+    return res.status(404).json({ success: false, message: 'Assignment not found' });
+  }
+
+  caregiver.expertRequests.splice(idx, 1);
+  await caregiver.save();
+
+  res.status(200).json({ success: true, message: 'Expert assignment removed' });
 });

@@ -71,6 +71,14 @@ class ChildDataAccess {
   async findByIdAndCaregiverId(id, caregiverId) {
     return await Child.findOne({ _id: id, caregiverId });
   }
+
+  /**
+   * Find all children belonging to any of the given caregiver IDs
+   */
+  async findByCaregiverIds(ids) {
+    if (!ids || ids.length === 0) return [];
+    return await Child.find({ caregiverId: { $in: ids } }).sort({ createdAt: -1 });
+  }
 }
 
 export default new ChildDataAccess();

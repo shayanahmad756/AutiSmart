@@ -1,6 +1,8 @@
 import express from 'express';
 import Assessment from '../models/Assessment.js';
 import Child from '../models/Child.js';
+import ChildQuiz from '../models/ChildQuiz.js';
+import AssessmentResult from '../models/AssessmentResult.js';
 import { authMiddleware, roleMiddleware } from '../middleware/index.js';
 import assessmentResultService from '../services/assessmentResult.service.js';
 import childQuizService from '../services/childQuiz.service.js';
@@ -141,14 +143,19 @@ router.post('/results', async (req, res) => {
 
 // @route   GET /api/assessments/child/:childId/results
 // @desc    Get past assessment results for a child
-// @access  Private (caregiver/admin)
+// @access  Private (caregiver/owner, expert, admin)
 router.get('/child/:childId/results', async (req, res) => {
   try {
     const { childId } = req.params;
     const child = await Child.findById(childId).lean();
     if (!child) return res.status(404).json({ success: false, message: 'Child not found' });
 
-    if (req.user.role !== 'admin' && child.caregiverId.toString() !== req.user._id.toString()) {
+    // Allow: caregiver (owner), expert, admin
+    if (
+      req.user.role !== 'admin' &&
+      req.user.role !== 'expert' &&
+      child.caregiverId.toString() !== req.user._id.toString()
+    ) {
       return res.status(403).json({ success: false, message: 'Access denied' });
     }
 
@@ -157,6 +164,89 @@ router.get('/child/:childId/results', async (req, res) => {
 
     res.status(200).json({ success: true, data: { results, stats } });
   } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// @route   GET /api/assessments/child/:childId/quiz-results-detailed
+// @desc    Get child's personalized quiz questions merged with their latest assessment answers
+// @access  Private (caregiver/owner, expert, admin)
+router.get('/child/:childId/quiz-results-detailed', async (req, res) => {
+  try {
+    const { childId } = req.params;
+    const child = await Child.findById(childId).lean();
+    if (!child) return res.status(404).json({ success: false, message: 'Child not found' });
+
+    // Access control: caregiver (owner), expert, or admin
+    if (
+      req.user.role !== 'admin' &&
+      req.user.role !== 'expert' &&
+      child.caregiverId.toString() !== req.user._id.toString()
+    ) {
+      return res.status(403).json({ success: false, message: 'Access denied' });
+    }
+
+    // Fetch all personalized quiz levels for this child
+    const quizzes = await ChildQuiz.find({ childId }).lean();
+
+    // Fetch latest assessment result
+    const latestResult = await AssessmentResult.findOne({ childId })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // Build map: questionId -> { optionIndex, score }
+    const answerMap = {};
+    if (latestResult?.answers) {
+      latestResult.answers.forEach((a) => {
+        answerMap[a.questionId] = { optionIndex: a.optionIndex, score: a.score };
+      });
+    }
+
+    // Merge quiz questions with answers, grouped by category
+    const questionsByCategory = {};
+    for (const quiz of quizzes) {
+      for (const q of quiz.questions) {
+        const answer = answerMap[q.id];
+        const entry = {
+          id: q.id,
+          category: q.category,
+          question: q.question,
+          options: q.options,
+          scores: q.scores,
+          quizLevel: quiz.level,
+          selectedOptionIndex: answer !== undefined ? answer.optionIndex : null,
+          selectedOptionText:
+            answer !== undefined && q.options[answer.optionIndex] !== undefined
+              ? q.options[answer.optionIndex]
+              : null,
+          score: answer !== undefined ? answer.score : null,
+        };
+        if (!questionsByCategory[q.category]) questionsByCategory[q.category] = [];
+        questionsByCategory[q.category].push(entry);
+      }
+    }
+
+    res.json({
+      success: true,
+      data: {
+        child: { _id: child._id, name: child.name, age: child.age },
+        assessmentResult: latestResult
+          ? {
+              assessmentLevel: latestResult.assessmentLevel,
+              totalScore: latestResult.totalScore,
+              totalQuestions: latestResult.totalQuestions,
+              scorePercentage: latestResult.scorePercentage,
+              autismLevel: latestResult.autismLevel,
+              categoryScores: latestResult.categoryScores,
+              createdAt: latestResult.createdAt,
+            }
+          : null,
+        questionsByCategory,
+        hasData: Object.keys(questionsByCategory).length > 0,
+      },
+    });
+  } catch (error) {
+    console.error('Get detailed quiz results error:', error);
     res.status(500).json({ success: false, message: error.message });
   }
 });

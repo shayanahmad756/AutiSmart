@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useChild } from '../context/ChildContext';
 import { useAuth } from '../context/AuthContext';
 import Card from '../components/Card';
+import ChildSelector from '../components/ChildSelector';
 import childAPI from '../api/child.api';
 
 const Games = () => {
@@ -14,6 +15,8 @@ const Games = () => {
   const [recommendations, setRecommendations] = useState([]);
   const [hasAssessment, setHasAssessment] = useState(null); // null=loading/unknown, false=no assessment, true=has results
   const [loadingRecs, setLoadingRecs] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [categorySeverities, setCategorySeverities] = useState({});
 
   const games = [
     {
@@ -22,9 +25,10 @@ const Games = () => {
       description: 'Match pairs of cards to improve memory and concentration',
       icon: 'bi-grid-3x3-gap',
       difficulty: 'Easy',
-      category: 'Memory',
+      category: 'Focus & Attention',
       color: 'success',
-      route: '/games/memory-match'
+      route: '/games/memory-match',
+      totalLevels: 10
     },
     {
       id: 2,
@@ -32,9 +36,10 @@ const Games = () => {
       description: 'Match sounds to images to improve auditory processing',
       icon: 'bi-music-note-beamed',
       difficulty: 'Easy',
-      category: 'Audio',
+      category: 'Sensory Sensitivity',
       color: 'info',
-      route: '/games/sound-matching'
+      route: '/games/sound-matching',
+      totalLevels: 10
     },
     {
       id: 10,
@@ -42,9 +47,10 @@ const Games = () => {
       description: 'Match color names to tiles to improve color recognition',
       icon: 'bi-palette',
       difficulty: 'Easy',
-      category: 'Visual',
+      category: 'Sensory Sensitivity',
       color: 'success',
-      route: '/games/color-matching'
+      route: '/games/color-matching',
+      totalLevels: 10
     },
     {
       id: 3,
@@ -52,55 +58,43 @@ const Games = () => {
       description: 'Recognize and understand different facial expressions through fun emoji puzzles',
       icon: 'bi-emoji-smile',
       difficulty: 'Medium',
-      category: 'Social',
+      category: 'Social Interaction',
       color: 'warning',
-      route: '/games/emotion-explorer'
-    },
-    {
-      id: 4,
-      title: 'Shape Finder',
-      description: 'Identify and match shapes to improve pattern recognition',
-      icon: 'bi-hexagon',
-      difficulty: 'Easy',
-      category: 'Shapes',
-      color: 'success'
-    },
-    {
-      id: 5,
-      title: 'Number Adventure',
-      description: 'Learn counting and basic math through interactive play',
-      icon: 'bi-123',
-      difficulty: 'Medium',
-      category: 'Math',
-      color: 'warning'
-    },
-    {
-      id: 7,
-      title: 'Story Sequencer',
-      description: 'Arrange story events in correct order',
-      icon: 'bi-book',
-      difficulty: 'Hard',
-      category: 'Logic',
-      color: 'danger'
+      route: '/games/emotion-explorer',
+      totalLevels: 10
     },
     {
       id: 9,
-      title: 'Pattern Creator',
-      description: 'Create and complete patterns to develop sequencing skills',
+      title: 'Pattern Builder',
+      description: 'Recognize and complete repeating color & shape patterns across 15 progressive levels',
       icon: 'bi-grid',
-      difficulty: 'Hard',
-      category: 'Logic',
-      color: 'danger'
+      difficulty: 'Medium',
+      category: 'Repetitive Behavior',
+      color: 'danger',
+      route: '/games/pattern-builder',
+      totalLevels: 15
     },
     {
-      id: 11,
+      id: 12,
+      title: 'Eye Contact Game',
+      description: 'Improve attention and eye contact skills with webcam-based gaze tracking across 15 progressive levels',
+      icon: 'bi-eye',
+      difficulty: 'Easy',
+      category: 'Eye Contact',
+      color: 'primary',
+      route: '/games/eye-contact',
+      totalLevels: 15
+    },
+    {
+      id: 13,
       title: 'Communication Builder',
-      description: 'Build "I want ___" sentences with emoji picture cards and hear them spoken aloud',
+      description: 'Match pictures to their words to build vocabulary — with spoken pronunciation for every word',
       icon: 'bi-chat-heart',
       difficulty: 'Easy',
       category: 'Communication',
-      color: 'info',
-      route: '/games/communication-builder'
+      color: 'success',
+      route: '/games/picture-word',
+      totalLevels: 15
     }
   ];
 
@@ -116,28 +110,46 @@ const Games = () => {
       .then((res) => {
         setHasAssessment(res.data.hasAssessment);
         setRecommendations(res.data.recommendations || []);
+        setCategorySeverities(res.data.categorySeverities || {});
       })
       .catch(() => {
         setHasAssessment(null);
         setRecommendations([]);
+        setCategorySeverities({});
       })
       .finally(() => setLoadingRecs(false));
   }, [selectedChild?._id]);
+
+  // Compute max allowed level per game based on category severities from assessment
+  const computeMaxLevel = (gameCategories, severities, totalLevels) => {
+    if (!totalLevels) return null;
+    if (!gameCategories || gameCategories.length === 0) return Math.ceil(totalLevels / 3);
+    if (!severities || Object.keys(severities).length === 0) return Math.ceil(totalLevels / 3);
+    const worst = Math.max(...gameCategories.map((c) => severities[c] ?? 1));
+    if (worst > 0.60) return Math.ceil(totalLevels / 3);
+    if (worst > 0.40) return Math.ceil((totalLevels * 2) / 3);
+    return totalLevels;
+  };
 
   // Merge recommendation data into games and sort by relevance score (recommended first)
   const recMap = Object.fromEntries(recommendations.map((r) => [r.id, r]));
   const enrichedGames = games.map((game) => ({
     ...game,
     ...(recMap[game.id] || { relevanceScore: 0, isRecommended: false, problemAreas: [] }),
+    maxLevel: selectedChild && hasAssessment === true
+      ? computeMaxLevel(recMap[game.id]?.targetedCategories || [], categorySeverities, game.totalLevels)
+      : null,
   }));
   const sortedGames = [...enrichedGames].sort((a, b) => b.relevanceScore - a.relevanceScore);
-  const filteredGames = activeCategory === 'All'
-    ? sortedGames
-    : sortedGames.filter((g) => g.category === activeCategory);
+  const filteredGames = sortedGames.filter((g) => {
+    const matchesCategory = activeCategory === 'All' || g.category === activeCategory;
+    const matchesSearch = !searchQuery || g.title.toLowerCase().includes(searchQuery.toLowerCase()) || g.description.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesCategory && matchesSearch;
+  });
 
-  const categories = ['All', 'Memory', 'Visual', 'Logic', 'Math', 'Social', 'Audio', 'Communication'];
+  const categories = ['All', 'Eye Contact', 'Social Interaction', 'Communication', 'Repetitive Behavior', 'Sensory Sensitivity', 'Focus & Attention'];
 
-  const requiresChildSelection = user?.role === 'caregiver' && !selectedChild;
+  const requiresChildSelection = !!user && !selectedChild;
   const requiresAssessment = !!selectedChild && hasAssessment === false;
   const isBlocked = requiresChildSelection || requiresAssessment;
 
@@ -153,21 +165,10 @@ const Games = () => {
         </p>
       </div>
 
-      {/* Child Selection Warning */}
-      {requiresChildSelection && (
-        <div className="alert alert-warning d-flex align-items-center mb-4" role="alert">
-          <i className="bi bi-exclamation-triangle-fill me-3 fs-4"></i>
-          <div>
-            <h5 className="alert-heading mb-2">Child Selection Required</h5>
-            <p className="mb-2">Please select a child before playing therapy games. The game results will be recorded for the selected child.</p>
-            <button 
-              className="btn btn-warning btn-sm"
-              onClick={() => navigate('/child-management')}
-            >
-              <i className="bi bi-person-plus-fill me-2"></i>
-              Go to Child Management
-            </button>
-          </div>
+      {/* Child Selector */}
+      {user && (
+        <div className="mb-4">
+          <ChildSelector />
         </div>
       )}
 
@@ -212,6 +213,27 @@ const Games = () => {
         </div>
       )}
 
+      {/* Search Bar */}
+      <div className="mb-3">
+        <div className="input-group">
+          <span className="input-group-text bg-white border-end-0">
+            <i className="bi bi-search text-muted"></i>
+          </span>
+          <input
+            type="text"
+            className="form-control border-start-0 ps-0"
+            placeholder="Search games..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
+          {searchQuery && (
+            <button className="btn btn-outline-secondary" onClick={() => setSearchQuery('')}>
+              <i className="bi bi-x"></i>
+            </button>
+          )}
+        </div>
+      </div>
+
       {/* Filter Buttons */}
       <div className="mb-4">
         <div className="d-flex flex-wrap gap-2">
@@ -255,7 +277,19 @@ const Games = () => {
                 <h5 className="card-title">{game.title}</h5>
                 <div className="mb-2">
                   <span className={`badge badge-${game.color} me-2`}>{game.category}</span>
-                  <span className="badge badge-info">{game.difficulty}</span>
+                  {game.maxLevel && game.totalLevels ? (
+                    <span className={`badge ${
+                      game.maxLevel >= game.totalLevels ? 'bg-success' :
+                      game.maxLevel >= Math.ceil((game.totalLevels * 2) / 3) ? 'bg-warning text-dark' :
+                      'bg-info text-dark'
+                    }`}>
+                      {game.maxLevel >= game.totalLevels ? '🌟 All Levels' :
+                       game.maxLevel >= Math.ceil((game.totalLevels * 2) / 3) ? '⭐ Medium & Below' :
+                       '✅ Easy Levels Only'}
+                    </span>
+                  ) : (
+                    <span className="badge badge-info">{game.difficulty}</span>
+                  )}
                 </div>
 
                 {/* Problem areas tag — only shown when recommendation data is available */}
@@ -274,7 +308,7 @@ const Games = () => {
               <div className="mt-auto">
                 <button
                   className={`btn w-100 ${game.isRecommended ? 'btn-warning' : 'btn-primary'}`}
-                  onClick={() => game.route ? navigate(game.route) : alert('Coming Soon!')}
+                  onClick={() => game.route ? navigate(game.route, { state: { autoStart: true, maxLevel: game.maxLevel } }) : alert('Coming Soon!')}
                   disabled={isBlocked}
                   title={
                     requiresChildSelection

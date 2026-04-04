@@ -2,6 +2,7 @@
  * Child Controller (Refactored)
  * Handles HTTP requests and delegates business logic to services
  */
+import { PassThrough } from 'stream';
 import childService from '../services/child.service.js';
 import { asyncHandler } from '../middleware/error.middleware.js';
 import PDFDocument from 'pdfkit';
@@ -52,20 +53,25 @@ export const getChildren = asyncHandler(async (req, res) => {
 // @route   GET /api/children/all
 // @access  Private (Expert, Admin)
 export const getAllChildren = asyncHandler(async (req, res) => {
-  // Check authorization
   if (req.user.role !== 'expert' && req.user.role !== 'admin') {
     return res.status(403).json({
       success: false,
-      message: 'Access denied. Only experts and admins can access all children.'
+      message: 'Access denied. Only experts and admins can access all children.',
     });
   }
 
-  const children = await childService.getAllChildren();
+  let children;
+  if (req.user.role === 'admin') {
+    children = await childService.getAllChildren();
+  } else {
+    // Expert: only see children of assigned caregivers
+    children = await childService.getAllChildrenForExpert(req.user._id);
+  }
 
   res.status(200).json({
     success: true,
     data: children,
-    count: children.length
+    count: children.length,
   });
 });
 
@@ -73,14 +79,22 @@ export const getAllChildren = asyncHandler(async (req, res) => {
 // @route   GET /api/children/:id
 // @access  Private
 export const getChild = asyncHandler(async (req, res) => {
-  const isExpertOrAdmin = req.user.role === 'expert' || req.user.role === 'admin';
-  const caregiverId = isExpertOrAdmin ? null : req.user._id;
+  let child;
+  if (req.user.role === 'admin') {
+    child = await childService.getChildById(req.params.id, null);
+  } else if (req.user.role === 'expert') {
+    child = await childService.getChildByIdForExpert(req.params.id, req.user._id);
+  } else {
+    child = await childService.getChildById(req.params.id, req.user._id);
+  }
 
-  const child = await childService.getChildById(req.params.id, caregiverId);
+  if (!child) {
+    return res.status(404).json({ success: false, message: 'Child not found' });
+  }
 
   res.status(200).json({
     success: true,
-    data: child
+    data: child,
   });
 });
 
@@ -121,19 +135,20 @@ export const deleteChild = asyncHandler(async (req, res) => {
 // @route   GET /api/children/:id/stats
 // @access  Private
 export const getChildStats = asyncHandler(async (req, res) => {
-  const isExpertOrAdmin = req.user.role === 'expert' || req.user.role === 'admin';
-  const caregiverId = isExpertOrAdmin ? null : req.user._id;
+  let child;
+  if (req.user.role === 'admin') {
+    child = await childService.getChildById(req.params.id, null);
+  } else if (req.user.role === 'expert') {
+    child = await childService.getChildByIdForExpert(req.params.id, req.user._id);
+  } else {
+    child = await childService.getChildById(req.params.id, req.user._id);
+  }
 
-  // Get child data and verify access
-  const child = await childService.getChildById(req.params.id, caregiverId);
   const stats = await childService.getChildStatistics(req.params.id);
 
   res.status(200).json({
     success: true,
-    data: {
-      child,
-      ...stats
-    }
+    data: { child, ...stats },
   });
 });
 
@@ -142,11 +157,15 @@ export const getChildStats = asyncHandler(async (req, res) => {
 // @access  Private
 export const getChildActivities = asyncHandler(async (req, res) => {
   const { type, limit } = req.query;
-  const isExpertOrAdmin = req.user.role === 'expert' || req.user.role === 'admin';
-  const caregiverId = isExpertOrAdmin ? null : req.user._id;
 
   // Verify access to child
-  await childService.getChildById(req.params.id, caregiverId);
+  if (req.user.role === 'admin') {
+    await childService.getChildById(req.params.id, null);
+  } else if (req.user.role === 'expert') {
+    await childService.getChildByIdForExpert(req.params.id, req.user._id);
+  } else {
+    await childService.getChildById(req.params.id, req.user._id);
+  }
 
   const activities = await childService.getChildActivities(
     req.params.id,
@@ -165,11 +184,15 @@ export const getChildActivities = asyncHandler(async (req, res) => {
 // @route   POST /api/children/:id/activities
 // @access  Private
 export const addActivity = asyncHandler(async (req, res) => {
-  const isExpertOrAdmin = req.user.role === 'expert' || req.user.role === 'admin';
-  const caregiverId = isExpertOrAdmin ? null : req.user._id;
-
   // Verify access to child
-  const child = await childService.getChildById(req.params.id, caregiverId);
+  let child;
+  if (req.user.role === 'admin') {
+    child = await childService.getChildById(req.params.id, null);
+  } else if (req.user.role === 'expert') {
+    child = await childService.getChildByIdForExpert(req.params.id, req.user._id);
+  } else {
+    child = await childService.getChildById(req.params.id, req.user._id);
+  }
 
   // Add caregiverId to activity data
   const activityData = {
@@ -192,11 +215,16 @@ export const addActivity = asyncHandler(async (req, res) => {
 export const generateChildReport = asyncHandler(async (req, res) => {
   try {
     console.log('Generating PDF report for child:', req.params.id);
-    const isExpertOrAdmin = req.user.role === 'expert' || req.user.role === 'admin';
-    const caregiverId = isExpertOrAdmin ? null : req.user._id;
 
     // Verify access and get data
-    const child = await childService.getChildById(req.params.id, caregiverId);
+    let child;
+    if (req.user.role === 'admin') {
+      child = await childService.getChildById(req.params.id, null);
+    } else if (req.user.role === 'expert') {
+      child = await childService.getChildByIdForExpert(req.params.id, req.user._id);
+    } else {
+      child = await childService.getChildById(req.params.id, req.user._id);
+    }
     console.log('Child data retrieved:', child.name);
     
     const stats = await childService.getChildStatistics(req.params.id);
@@ -224,26 +252,11 @@ export const generateChildReport = asyncHandler(async (req, res) => {
       bufferPages: true
     });
 
-    // Set response headers with proper CORS
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Access-Control-Allow-Origin', req.headers.origin || 'http://localhost:5173');
-    res.setHeader('Access-Control-Allow-Credentials', 'true');
-    res.setHeader('Access-Control-Expose-Headers', 'Content-Disposition');
-    res.setHeader(
-      'Content-Disposition',
-      `attachment; filename=child-report-${child.name.replace(/\s+/g, '-')}-${Date.now()}.pdf`
-    );
-
-    // Pipe PDF to response
-    doc.pipe(res);
-    
-    // Handle errors in the PDF stream
-    doc.on('error', (err) => {
-      console.error('PDF generation error:', err);
-      if (!res.headersSent) {
-        res.status(500).json({ success: false, message: 'Error generating PDF' });
-      }
-    });
+    // Pipe into a PassThrough so we can await all chunks reliably
+    const passthrough = new PassThrough();
+    const chunks = [];
+    passthrough.on('data', chunk => chunks.push(chunk));
+    doc.pipe(passthrough);
 
   // Define colors for professional look
   const primaryColor = '#61C3B4';
@@ -617,8 +630,20 @@ export const generateChildReport = asyncHandler(async (req, res) => {
     );
   }
 
-  // Finalize PDF
+  // Finalize PDF and wait for all data to be collected
   doc.end();
+  await new Promise((resolve, reject) => {
+    passthrough.on('finish', resolve);
+    passthrough.on('error', reject);
+  });
+
+  const pdfBuffer = Buffer.concat(chunks);
+  const base64 = pdfBuffer.toString('base64');
+  res.json({
+    success: true,
+    data: base64,
+    filename: `child-report-${child.name.replace(/\s+/g, '-')}-${Date.now()}.pdf`
+  });
   } catch (error) {
     console.error('Error in generateChildReport:', error);
     if (!res.headersSent) {
@@ -684,11 +709,14 @@ export const getEmotionFeedback = asyncHandler(async (req, res) => {
 // @route   GET /api/caregiver/children/:id/recommendations
 // @access  Private
 export const getChildGameRecommendations = asyncHandler(async (req, res) => {
-  const isExpertOrAdmin = req.user.role === 'expert' || req.user.role === 'admin';
-  const caregiverId = isExpertOrAdmin ? null : req.user._id;
-
   // Verify the requesting user has access to this child
-  await childService.getChildById(req.params.id, caregiverId);
+  if (req.user.role === 'admin') {
+    await childService.getChildById(req.params.id, null);
+  } else if (req.user.role === 'expert') {
+    await childService.getChildByIdForExpert(req.params.id, req.user._id);
+  } else {
+    await childService.getChildById(req.params.id, req.user._id);
+  }
 
   const data = await recommendationService.getGameRecommendations(req.params.id);
 
@@ -763,11 +791,15 @@ export const autismDetect = asyncHandler(async (req, res) => {
 // @route   GET /api/caregiver/children/:id/autism-detections
 // @access  Private (Caregiver)
 export const getAutismDetections = asyncHandler(async (req, res) => {
-  // Allow caregivers and experts/admins to view history
-  const isExpertOrAdmin = req.user.role === 'expert' || req.user.role === 'admin';
-  const caregiverId = isExpertOrAdmin ? null : req.user._id;
-
-  const child = await childService.getChildById(req.params.id, caregiverId);
+  // Allow caregivers and experts/admins to view history (scoped for experts)
+  let child;
+  if (req.user.role === 'admin') {
+    child = await childService.getChildById(req.params.id, null);
+  } else if (req.user.role === 'expert') {
+    child = await childService.getChildByIdForExpert(req.params.id, req.user._id);
+  } else {
+    child = await childService.getChildById(req.params.id, req.user._id);
+  }
 
   const childDoc = await Child.findById(child._id || child.id).select('autismDetections name');
 

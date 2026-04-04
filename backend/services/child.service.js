@@ -4,6 +4,7 @@
  */
 import childDataAccess from '../dataAccess/child.dataAccess.js';
 import activityDataAccess from '../dataAccess/activity.dataAccess.js';
+import User from '../models/User.js';
 
 class ChildService {
   /**
@@ -41,11 +42,46 @@ class ChildService {
   }
 
   /**
-   * Get all children (for experts and admins)
+   * Get all children (for admins — unfiltered)
    */
   async getAllChildren() {
     const children = await childDataAccess.findAll();
     return children;
+  }
+
+  /**
+   * Get the caregiver IDs that have approved this expert
+   */
+  async getAssignedCaregiverIds(expertId) {
+    const caregivers = await User.find({
+      role: 'caregiver',
+      expertRequests: { $elemMatch: { expertId, status: 'approved' } },
+    })
+      .select('_id')
+      .lean();
+    return caregivers.map((c) => c._id);
+  }
+
+  /**
+   * Get all children for an expert (scoped to assigned caregivers only)
+   */
+  async getAllChildrenForExpert(expertId) {
+    const assignedIds = await this.getAssignedCaregiverIds(expertId);
+    return childDataAccess.findByCaregiverIds(assignedIds);
+  }
+
+  /**
+   * Get child by ID for an expert (verifies the child belongs to an assigned caregiver)
+   */
+  async getChildByIdForExpert(childId, expertId) {
+    const child = await childDataAccess.findById(childId);
+    if (!child) throw new Error('Child not found');
+
+    const assignedIds = await this.getAssignedCaregiverIds(expertId);
+    const isAssigned = assignedIds.some((id) => id.toString() === child.caregiverId.toString());
+    if (!isAssigned) throw new Error('Access denied');
+
+    return child;
   }
 
   /**

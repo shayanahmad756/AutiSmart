@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useChild } from '../context/ChildContext';
-import ChildSelector from '../components/ChildSelector';
 import '../styles/colorMatching.css';
 
 const ColorMatchingGame = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { selectedChild, recordActivity } = useChild();
 
   // Game levels configuration
@@ -66,6 +66,7 @@ const ColorMatchingGame = () => {
   const [mistakes, setMistakes] = useState(0);
   const [bestTimes, setBestTimes] = useState({});
   const [levelScore, setLevelScore] = useState(0);
+  const [gameFailed, setGameFailed] = useState(false);
 
   const timerRef = useRef(null);
 
@@ -95,6 +96,12 @@ const ColorMatchingGame = () => {
     if (savedBestTimes) {
       setBestTimes(JSON.parse(savedBestTimes));
     }
+  }, []);
+
+  // Auto-start when navigated from Games page
+  useEffect(() => {
+    if (location.state?.autoStart) startGame();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Start game for current level
@@ -174,8 +181,7 @@ const ColorMatchingGame = () => {
   // Handle time up
   const handleTimeUp = () => {
     setIsRunning(false);
-    alert('Time\'s up! Try again.');
-    resetGame();
+    setGameFailed(true);
   };
 
   // Complete current level
@@ -232,12 +238,13 @@ const ColorMatchingGame = () => {
 
   // Advance to next level
   const advanceLevel = () => {
-    if (currentLevel < levels.length) {
+    const limit = location.state?.maxLevel ?? levels.length;
+    if (currentLevel < limit) {
       setCurrentLevel((prev) => prev + 1);
       setLevelComplete(false);
       startGame();
     } else {
-      alert('Congratulations! You completed all levels!');
+      alert('Congratulations! You completed all your assigned levels!');
       navigate('/games');
     }
   };
@@ -248,6 +255,12 @@ const ColorMatchingGame = () => {
     startGame();
   };
 
+  // Retry after failure (same level)
+  const retryLevel = () => {
+    setGameFailed(false);
+    startGame();
+  };
+
   // Reset game to level 1
   const resetGame = () => {
     setCurrentLevel(1);
@@ -255,6 +268,7 @@ const ColorMatchingGame = () => {
     setTotalScore(0);
     setGameStarted(false);
     setLevelComplete(false);
+    setGameFailed(false);
     setRoundsCompleted(0);
     setMistakes(0);
     setIsRunning(false);
@@ -270,32 +284,16 @@ const ColorMatchingGame = () => {
   return (
     <div className="color-matching-container">
       {/* Header */}
-      <div className="game-header">
-        <button className="back-btn" onClick={goBack}>
-          <i className="bi bi-arrow-left"></i> Back to Games
+      <div style={{ maxWidth: '680px', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+        <button className="btn btn-outline-secondary rounded-pill" style={{ fontWeight: '700' }} onClick={goBack}>
+          ← Back
         </button>
-        <h1 className="game-title">
-          <i className="bi bi-palette"></i> Color Matching Game
+        <h1 style={{ fontWeight: '900', fontSize: '1.55rem', margin: 0, color: '#2d3748' }}>
+          🎨 Color Matching
         </h1>
-      </div>
-
-      <div className="container mt-3">
-        {/* Child Selector */}
-        <ChildSelector />
-
-        {/* Activity tracking notice */}
-        {!selectedChild && (
-          <div className="alert alert-info mt-3">
-            <i className="bi bi-info-circle me-2"></i>
-            Select a child above to track their progress and performance automatically.
-          </div>
-        )}
-        {selectedChild && (
-          <div className="alert alert-success mt-3">
-            <i className="bi bi-check-circle me-2"></i>
-            Playing as <strong>{selectedChild.name}</strong> - Progress will be recorded automatically!
-          </div>
-        )}
+        <div style={{ background: '#fdfcfa', borderRadius: '20px', padding: '6px 18px', fontWeight: '800', color: '#61C3B4', fontSize: '1.15rem', boxShadow: '0 2px 8px rgba(97,195,180,0.15)' }}>
+          Level {currentLevel} · ⭐ {score}
+        </div>
       </div>
 
       {/* Start Screen */}
@@ -332,27 +330,26 @@ const ColorMatchingGame = () => {
       {/* Active Game Screen */}
       {gameStarted && !levelComplete && (
         <div className="game-area">
-          {/* Stats Bar */}
-          <div className="stats-bar">
-            <div className="stat-item">
-              <i className="bi bi-trophy"></i>
-              <span>Level: {currentLevel}</span>
-            </div>
-            <div className="stat-item">
-              <i className="bi bi-star-fill"></i>
-              <span>Score: {score}</span>
-            </div>
-            <div className="stat-item">
-              <i className="bi bi-clock-history"></i>
-              <span className={timer <= 10 ? 'time-warning' : ''}>Time: {timer}s</span>
-            </div>
-            <div className="stat-item">
-              <i className="bi bi-x-circle"></i>
-              <span>Mistakes: {mistakes}</span>
-            </div>
+
+          {/* Timer */}
+          <div style={{ textAlign: 'center', marginBottom: '12px' }}>
+            <span style={{
+              display: 'inline-block',
+              background: timer <= 10 ? '#fee2e2' : '#fdfcfa',
+              color: timer <= 10 ? '#dc2626' : '#61C3B4',
+              border: `2px solid ${timer <= 10 ? '#dc2626' : '#61C3B4'}`,
+              borderRadius: '50px',
+              padding: '6px 22px',
+              fontWeight: '800',
+              fontSize: '1.2rem',
+              boxShadow: '0 2px 8px rgba(97,195,180,0.15)',
+              transition: 'color 0.3s, border-color 0.3s, background 0.3s'
+            }}>
+              ⏱ {timer}s
+            </span>
           </div>
 
-          {/* Progress Bar */}
+          {/* Progress Bar */}}
           <div className="progress-container">
             <div className="progress-label">
               Round {roundsCompleted + 1} of {currentLevelData.roundsNeeded}
@@ -393,6 +390,36 @@ const ColorMatchingGame = () => {
                 </span>
               </button>
             ))}
+          </div>
+
+          {/* How to Play & Tips */}
+          <div className="card border-0 shadow-sm mt-3" style={{ borderRadius: '16px', background: 'linear-gradient(135deg, #667eea15 0%, #764ba215 100%)' }}>
+            <div className="card-body p-3">
+              <h5 className="mb-3">
+                <i className="bi bi-lightbulb-fill text-warning me-2"></i>
+                How to Play &amp; Tips
+              </h5>
+              <div className="row">
+                <div className="col-md-6">
+                  <h6 className="fw-bold mb-2">Level {currentLevel} Details:</h6>
+                  <ul className="mb-3">
+                    <li>Colors on screen: <strong>{currentLevelData.colors}</strong></li>
+                    <li>Rounds to complete: <strong>{currentLevelData.roundsNeeded}</strong></li>
+                    <li>Time limit: <strong>{currentLevelData.timeLimit}s</strong></li>
+                    {bestTimes[currentLevel] && <li>Your best: <strong>{bestTimes[currentLevel]}s</strong></li>}
+                  </ul>
+                </div>
+                <div className="col-md-6">
+                  <h6 className="fw-bold mb-2">Tips for Success:</h6>
+                  <ul className="mb-0">
+                    <li>Read the color name carefully</li>
+                    <li>Scan all tiles before clicking</li>
+                    <li>Be quick to earn time bonuses</li>
+                    <li>Zero mistakes earns a perfect bonus!</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -473,6 +500,44 @@ const ColorMatchingGame = () => {
               )}
               <button className="back-to-games-btn" onClick={goBack}>
                 <i className="bi bi-grid-3x3-gap"></i> Back to Games
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Fail Overlay */}
+      {gameFailed && (
+        <div style={{
+          position: 'fixed', inset: 0,
+          background: 'rgba(0,0,0,0.55)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: '#fdfcfa', borderRadius: '24px',
+            padding: '40px 36px', maxWidth: '380px', width: '90%',
+            textAlign: 'center',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.18)'
+          }}>
+            <div style={{ fontSize: '3.5rem', marginBottom: '12px' }}>⏰</div>
+            <h2 style={{ fontWeight: '900', color: '#2d3748', marginBottom: '8px' }}>Time's Up!</h2>
+            <p style={{ color: '#5a6477', marginBottom: '28px' }}>
+              You completed {roundsCompleted} of {currentLevelData.roundsNeeded} rounds
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button
+                className="btn rounded-pill px-4 py-2 fw-bold"
+                style={{ background: '#61C3B4', color: '#fff', border: 'none' }}
+                onClick={retryLevel}
+              >
+                🔄 Retry
+              </button>
+              <button
+                className="btn btn-outline-secondary rounded-pill px-4 py-2 fw-bold"
+                onClick={goBack}
+              >
+                Leave
               </button>
             </div>
           </div>

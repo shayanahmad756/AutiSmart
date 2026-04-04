@@ -2,14 +2,25 @@ import './env.js'; // Must be first — loads .env before any service singleton 
 import express from 'express';
 import mongoose from 'mongoose';
 import cors from 'cors';
+import { createServer } from 'http';
+import { Server } from 'socket.io';
+import jwt from 'jsonwebtoken';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import authRoutes from './routes/authRoutes.js';
 import adminRoutes from './routes/adminRoutes.js';
 import childRoutes from './routes/childRoutes.js';
 import assessmentRoutes from './routes/assessmentRoutes.js';
+import chatRoutes from './routes/chatRoutes.js';
+import chatService from './services/chat.service.js';
 import { verifyEmailConfig } from './config/email.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 // Initialize express app
 const app = express();
+const httpServer = createServer(app);
 
 // CORS configuration
 const corsOptions = {
@@ -20,10 +31,74 @@ const corsOptions = {
   exposedHeaders: ['Content-Type', 'Authorization']
 };
 
+// Socket.IO setup
+const io = new Server(httpServer, {
+  cors: {
+    origin: ['http://localhost:5173', 'http://127.0.0.1:5173'],
+    credentials: true,
+    methods: ['GET', 'POST'],
+  },
+});
+app.set('io', io);
+
+// Socket.IO JWT authentication middleware
+io.use((socket, next) => {
+  const token = socket.handshake.auth?.token;
+  if (!token) return next(new Error('Authentication error: no token provided'));
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    socket.userId = (decoded.id || decoded._id)?.toString();
+    next();
+  } catch {
+    next(new Error('Authentication error: invalid token'));
+  }
+});
+
+// Socket.IO connection handler
+io.on('connection', (socket) => {
+  // Each user joins a room named by their userId so they can be targeted directly
+  socket.join(socket.userId);
+
+  socket.on('send_message', async (data) => {
+    const { receiverId, content, type, fileUrl, fileName } = data;
+    try {
+      const message = await chatService.saveMessage({
+        senderId: socket.userId,
+        receiverId,
+        content: content || '',
+        type: type || 'text',
+        fileUrl,
+        fileName,
+      });
+      // Deliver to recipient
+      io.to(receiverId.toString()).emit('receive_message', message);
+      // Confirm to sender
+      socket.emit('message_sent', message);
+    } catch (err) {
+      socket.emit('message_error', { error: err.message });
+    }
+  });
+
+  socket.on('typing', ({ receiverId }) => {
+    socket.to(receiverId.toString()).emit('user_typing', { senderId: socket.userId });
+  });
+
+  socket.on('stop_typing', ({ receiverId }) => {
+    socket.to(receiverId.toString()).emit('user_stop_typing', { senderId: socket.userId });
+  });
+
+  socket.on('disconnect', () => {
+    console.log(`[Socket] disconnected: ${socket.userId}`);
+  });
+});
+
 // Middleware
 app.use(cors(corsOptions));
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
+
+// Serve uploaded chat files statically
+app.use('/uploads/chat', express.static(path.join(__dirname, 'uploads', 'chat')));
 
 // MongoDB connection
 const connectDB = async () => {
@@ -67,6 +142,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/caregiver', childRoutes);
 app.use('/api/assessments', assessmentRoutes);
+app.use('/api/chat', chatRoutes);
 
 // Health check route
 app.get('/health', (req, res) => {
@@ -97,7 +173,7 @@ app.use((err, req, res, next) => {
 
 // Start server
 const PORT = process.env.PORT || 5000;
-const server = app.listen(PORT, () => {
+const server = httpServer.listen(PORT, () => {
   console.log(`✅ Server running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });

@@ -31,6 +31,24 @@ const userSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    expertRequests: [
+      {
+        expertId: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+          required: true,
+        },
+        status: {
+          type: String,
+          enum: ['pending', 'approved', 'rejected'],
+          default: 'pending',
+        },
+        requestedAt: {
+          type: Date,
+          default: Date.now,
+        },
+      },
+    ],
     otp: {
       type: String,
       select: false,

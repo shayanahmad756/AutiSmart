@@ -168,44 +168,25 @@ const childAPI = {
 
   downloadChildReportPDF: async (childId) => {
     try {
-      // Get the auth token
-      const token = localStorage.getItem('token');
-      
-      if (!token) {
-        throw new Error('No authentication token found');
-      }
-      
-      // Create a direct download using fetch to bypass IDM interception
-      const response = await fetch(`http://localhost:5000/api/caregiver/children/${childId}/report`, {
-        method: 'GET',
-        headers: {
-          'Authorization': `Bearer ${token}`,
-          'Accept': 'application/pdf'
-        },
-        credentials: 'include'
-      });
+      // Receive base64-encoded JSON to avoid IDM intercepting binary streams
+      const res = await http.get(`/caregiver/children/${childId}/report`);
+      const payload = res.data;
 
-      if (!response.ok) {
-        const errorText = await response.text();
-        console.error('PDF download failed:', response.status, errorText);
-        throw new Error(`Failed to download report: ${response.status} ${response.statusText}`);
+      if (!payload?.success || !payload?.data) {
+        throw new Error(payload?.message || 'Server returned empty PDF data');
       }
 
-      // Check content type
-      const contentType = response.headers.get('content-type');
-      console.log('Response content-type:', contentType);
-      
-      const blob = await response.blob();
-      console.log('Blob size:', blob.size, 'bytes');
-      
-      if (blob.size === 0) {
-        throw new Error('Received empty PDF file');
+      const base64 = payload.data;
+
+      const byteCharacters = atob(base64);
+      const byteNumbers = new Uint8Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
       }
-      
-      return blob;
+      return new Blob([byteNumbers], { type: 'application/pdf' });
     } catch (error) {
       console.error('PDF download error:', error);
-      throw { message: error.message || 'Failed to download report' };
+      throw { message: error.response?.data?.message || error.message || 'Failed to download report' };
     }
   },
 

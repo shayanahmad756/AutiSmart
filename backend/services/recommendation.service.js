@@ -33,10 +33,22 @@ const GAME_PROBLEM_MAP = [
     route: '/games/emotion-explorer',
   },
   {
-    id: 11,
+    id: 13,
     name: 'Communication Builder',
     categories: ['Communication', 'Social Interaction'],
-    route: '/games/communication-builder',
+    route: '/games/picture-word',
+  },
+  {
+    id: 12,
+    name: 'Eye Contact Game',
+    categories: ['Eye Contact', 'Social Interaction'],
+    route: '/games/eye-contact',
+  },
+  {
+    id: 9,
+    name: 'Pattern Builder',
+    categories: ['Repetitive Behavior', 'Focus & Attention'],
+    route: '/games/pattern-builder',
   },
 ];
 
@@ -104,6 +116,7 @@ const getGameRecommendations = async (childId) => {
     hasAssessment: true,
     assessmentDate: latestResult.createdAt,
     autismLevel: latestResult.autismLevel,
+    categorySeverities: severities,
     recommendations,
   };
 };

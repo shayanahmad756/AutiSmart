@@ -81,7 +81,7 @@ const AssessmentManagement = () => {
 
       <div className="mb-4">
         <h1 className="text-primary-custom"><i className="bi bi-stars me-2"></i>Child Quiz Management</h1>
-        <p className="text-muted">Personalized quizzes are generated automatically by Gemini AI when a child profile is created or updated.</p>
+        <p className="text-muted">Personalized quizzes are generated automatically by Groq AI when a child profile is created or updated.</p>
       </div>
 
       {/* Stats */}
@@ -116,7 +116,7 @@ const AssessmentManagement = () => {
         <i className="bi bi-info-circle-fill mt-1 flex-shrink-0"></i>
         <div>
           <strong>Automatic Quiz Generation:</strong> When a caregiver creates or updates a child profile,
-          Gemini AI instantly generates a personalized quiz using the child's name, age, gender, date of birth,
+          Groq AI instantly generates a personalized quiz using the child's name, age, gender, date of birth,
           diagnosis, special needs, and notes. Past assessment results are also used to focus on weaker areas.
           Use <strong>Regenerate</strong> to refresh a child's quiz with the latest profile data.
         </div>
@@ -199,7 +199,7 @@ const AssessmentManagement = () => {
                           className="btn btn-sm btn-outline-primary"
                           onClick={() => handleGenerateChildQuiz(child._id, child.name)}
                           disabled={generatingChild === child._id}
-                          title="Regenerate personalized Gemini AI quiz for this child"
+                          title="Regenerate personalized Groq AI quiz for this child"
                         >
                           {generatingChild === child._id
                             ? <><span className="spinner-border spinner-border-sm me-1"></span>Generating...</>

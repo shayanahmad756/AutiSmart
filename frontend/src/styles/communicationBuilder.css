@@ -2,6 +2,25 @@
    Communication Builder (PECS-style) Game Styles
    ============================================================ */
 
+/* ---- Page wrapper ---- */
+.cb-page {
+  --card-bg: #fdfcfa;
+  --bg-primary: #f8f6f3;
+  --bg-secondary: #f0ede7;
+  --text-primary: #2d3748;
+  --text-secondary: #5a6477;
+  --text-muted: #8b94a8;
+  --border-color: #e5e1d8;
+  color: #2d3748;
+  min-height: 100vh;
+  background: linear-gradient(135deg, #f8f6f3 0%, #e8f9f6 100%);
+  padding: 20px 16px 70px;
+}
+
+[data-theme="dark"] .cb-page {
+  background: linear-gradient(135deg, #1a2332 0%, #243142 100%);
+}
+
 /* ---- Sentence Strip ---- */
 .sentence-strip {
   display: flex;
@@ -82,7 +101,7 @@
   flex-shrink: 0;
   border-radius: 20px;
   border: 2px solid transparent;
-  background: var(--bg-secondary, #f0f0f0);
+  background: var(--bg-secondary, #e8f9f6);
   color: var(--text-secondary, #555);
   font-size: 0.85rem;
   font-weight: 600;
@@ -148,8 +167,8 @@
 }
 
 .pecs-card.correct {
-  border-color: #28a745;
-  background: rgba(40, 167, 69, 0.1);
+  border-color: #61C3B4;
+  background: rgba(97, 195, 180, 0.1);
   animation: pecsCorrect 0.4s ease;
 }
 

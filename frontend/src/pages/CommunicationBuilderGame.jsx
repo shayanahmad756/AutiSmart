@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
-import ChildSelector from '../components/ChildSelector';
 import { useChild } from '../context/ChildContext';
 import '../styles/communicationBuilder.css';
 
@@ -364,6 +363,7 @@ export default function CommunicationBuilderGame() {
      ============================================================ */
   if (screen === 'start') {
     return (
+      <div className="cb-page">
       <div className="container py-4" style={{ maxWidth: 640 }}>
         <button className="btn btn-link text-decoration-none mb-3 ps-0" onClick={() => navigate('/games')}>
           <i className="bi bi-arrow-left me-1" /> Back to Games
@@ -374,8 +374,6 @@ export default function CommunicationBuilderGame() {
           <h2 className="fw-bold mb-1">Communication Builder</h2>
           <p className="text-muted">Build sentences with picture cards and hear them spoken aloud</p>
         </div>
-
-        <ChildSelector />
 
         <div className="card border-0 shadow-sm mb-4" style={{ background: 'var(--card-bg)', borderRadius: 16 }}>
           <div className="card-body p-4">
@@ -404,27 +402,6 @@ export default function CommunicationBuilderGame() {
           </div>
         </div>
 
-        <div className="card border-0 shadow-sm mb-4" style={{ background: 'var(--card-bg)', borderRadius: 16 }}>
-          <div className="card-body p-4">
-            <h6 className="fw-bold mb-3" style={{ color: '#61C3B4' }}>Choose Level</h6>
-            <div className="row g-2">
-              {LEVELS.map((lvl, idx) => (
-                <div key={lvl.id} className="col-6">
-                  <button
-                    type="button"
-                    onClick={() => setCurrentLevelIdx(idx)}
-                    className={`w-100 btn btn-sm rounded-3 fw-semibold py-2 ${currentLevelIdx === idx ? 'btn-primary' : 'btn-outline-secondary'}`}
-                    style={currentLevelIdx === idx ? { background: '#61C3B4', borderColor: '#61C3B4' } : {}}
-                  >
-                    <div>Level {lvl.id}: {lvl.name}</div>
-                    <small style={{ fontWeight: 400, opacity: 0.85 }}>{lvl.description}</small>
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
         <button
           className="btn w-100 py-3 fw-bold fs-5 rounded-4 text-white"
           style={{ background: 'linear-gradient(135deg, #61C3B4, #4AA99A)' }}
@@ -432,6 +409,7 @@ export default function CommunicationBuilderGame() {
         >
           Start <i className="bi bi-play-fill" />
         </button>
+      </div>
       </div>
     );
   }
@@ -443,6 +421,7 @@ export default function CommunicationBuilderGame() {
     const pct = mode === 'guided' && maxScore > 0 ? Math.round((score / maxScore) * 100) : null;
 
     return (
+      <div className="cb-page">
       <div className="container py-4" style={{ maxWidth: 560 }}>
         <div className="card border-0 shadow" style={{ background: 'var(--card-bg)', borderRadius: 20 }}>
           <div className="card-body p-4 text-center">
@@ -517,11 +496,13 @@ export default function CommunicationBuilderGame() {
           </div>
         </div>
       </div>
+      </div>
     );
   }
 
   /* ---- Game Screen ---- */
   return (
+    <div className="cb-page">
     <div className="container py-3" style={{ maxWidth: 680 }}>
       {/* Header */}
       <div className="d-flex align-items-center justify-content-between mb-3">
@@ -626,6 +607,41 @@ export default function CommunicationBuilderGame() {
         ))}
       </div>
 
+      {/* How to Play & Tips */}
+      <div className="card border-0 shadow-sm mt-4" style={{ borderRadius: '16px', background: 'linear-gradient(135deg, #667eea15 0%, #764ba215 100%)' }}>
+        <div className="card-body p-4">
+          <h5 className="mb-3"><i className="bi bi-lightbulb-fill text-warning me-2"></i>How to Play &amp; Tips</h5>
+          <div className="row">
+            <div className="col-md-6">
+              <h6 className="fw-bold mb-2">Level Details:</h6>
+              <ul className="mb-3">
+                <li>Level {currentLevel.id}: {currentLevel.name}</li>
+                <li>Mode: {mode === 'free' ? 'Free Mode' : 'Guided Mode'}</li>
+                <li>Difficulty: {currentLevel.difficulty}</li>
+              </ul>
+            </div>
+            <div className="col-md-6">
+              <h6 className="fw-bold mb-2">{mode === 'free' ? 'Free Mode Tips:' : 'Guided Mode Tips:'}</h6>
+              <ul className="mb-0">
+                {mode === 'free' ? (
+                  <>
+                    <li>Tap picture cards to build a sentence</li>
+                    <li>Press "Say it!" to hear it spoken</li>
+                    <li>Clear to start a new sentence</li>
+                  </>
+                ) : (
+                  <>
+                    <li>Find the picture shown at the top</li>
+                    <li>Tap the correct picture card below</li>
+                    <li>Watch for the highlighted target emoji</li>
+                  </>
+                )}
+              </ul>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Free Mode — finish session button */}
       {mode === 'free' && (
         <button
@@ -635,6 +651,7 @@ export default function CommunicationBuilderGame() {
           <i className="bi bi-check2-circle me-1" /> Finish Session
         </button>
       )}
+    </div>
     </div>
   );
 }

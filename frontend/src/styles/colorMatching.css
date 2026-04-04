@@ -2,7 +2,7 @@
 
 .color-matching-container {
   min-height: 100vh;
-  background: linear-gradient(135deg, var(--primary-subtle, #e8f8f5) 0%, var(--bg-secondary, #f0ede7) 100%);
+  background: linear-gradient(135deg, #f8f6f3 0%, #e8f9f6 100%);
   padding: 20px;
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
 }
@@ -32,20 +32,20 @@
 }
 
 .back-btn {
-  background: linear-gradient(135deg, var(--primary, #61C3B4) 0%, var(--primary-dark, #4da09a) 100%);
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  border-radius: var(--radius-soft, 20px);
+  background: transparent;
+  color: #6c757d;
+  border: 2px solid #6c757d;
+  padding: 8px 20px;
+  border-radius: 50px;
   font-size: 1rem;
+  font-weight: 700;
   cursor: pointer;
-  transition: all var(--transition, 0.3s ease);
-  box-shadow: var(--shadow-md, 0 4px 16px rgba(45, 55, 72, 0.12));
+  transition: all 0.3s ease;
 }
 
 .back-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: var(--shadow-lg, 0 8px 24px rgba(45, 55, 72, 0.16));
+  background: #6c757d;
+  color: #fff;
 }
 
 .back-btn i {
@@ -156,7 +156,7 @@
 
 /* Game Area */
 .game-area {
-  max-width: 1000px;
+  max-width: 680px;
   margin: 0 auto;
   animation: fadeIn 0.5s ease;
 }
@@ -197,26 +197,26 @@
 /* Progress Bar */
 .progress-container {
   background: var(--card-bg, #fdfcfa);
-  padding: 20px;
+  padding: 10px 16px;
   border-radius: var(--radius-card, 16px);
-  margin-bottom: 30px;
+  margin-bottom: 12px;
   box-shadow: var(--shadow-sm, 0 2px 8px rgba(45, 55, 72, 0.08));
   border: 1px solid var(--border-color, #e5e1d8);
 }
 
 .progress-label {
   text-align: center;
-  font-size: 1.1rem;
+  font-size: 0.85rem;
   font-weight: 600;
   color: var(--text-secondary, #5a6477);
-  margin-bottom: 12px;
+  margin-bottom: 6px;
 }
 
 .progress-bar-wrapper {
   width: 100%;
-  height: 30px;
+  height: 12px;
   background: var(--light-gray, #f0ede7);
-  border-radius: 15px;
+  border-radius: 8px;
   overflow: hidden;
   position: relative;
 }
@@ -243,42 +243,42 @@
 /* Color Prompt */
 .color-prompt {
   background: var(--card-bg, #fdfcfa);
-  padding: 40px;
+  padding: 14px 20px;
   border-radius: var(--radius-soft, 20px);
   text-align: center;
-  margin-bottom: 35px;
+  margin-bottom: 12px;
   box-shadow: var(--shadow-md, 0 4px 16px rgba(45, 55, 72, 0.12));
   border: 1px solid var(--border-color, #e5e1d8);
 }
 
 .color-prompt h2 {
-  font-size: 1.5rem;
+  font-size: 1rem;
   color: var(--text-secondary, #5a6477);
-  margin-bottom: 10px;
+  margin-bottom: 2px;
 }
 
 .target-color {
-  font-size: 3.5rem;
+  font-size: 2rem;
   font-weight: bold;
   color: var(--primary, #61C3B4);
-  margin: 15px 0;
+  margin: 4px 0;
   text-transform: uppercase;
-  letter-spacing: 3px;
+  letter-spacing: 2px;
   text-shadow: 2px 2px 4px rgba(45, 55, 72, 0.1);
 }
 
 .prompt-instruction {
-  font-size: 1.2rem;
+  font-size: 0.85rem;
   color: var(--text-muted, #8b94a8);
-  margin-top: 15px;
+  margin-top: 4px;
 }
 
 /* Color Grid */
 .color-grid {
   display: grid;
-  gap: 20px;
-  padding: 20px;
-  max-width: 800px;
+  gap: 10px;
+  padding: 4px;
+  max-width: 680px;
   margin: 0 auto;
 }
 
@@ -297,15 +297,15 @@
 /* Color Tiles */
 .color-tile {
   aspect-ratio: 1;
-  min-height: 150px;
-  border-radius: 25px;
+  min-height: 55px;
+  border-radius: 12px;
   cursor: pointer;
   transition: all 0.3s ease;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.15);
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.5rem;
+  font-size: 0.75rem;
   font-weight: bold;
   text-transform: uppercase;
   position: relative;

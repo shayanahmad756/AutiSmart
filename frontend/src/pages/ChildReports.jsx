@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useChild } from '../context/ChildContext';
-import { childService } from '../services';
+import { useAuth } from '../context/AuthContext';
+import { childService, assessmentService } from '../services';
 import { Line, Bar } from 'react-chartjs-2';
 import {
   Chart as ChartJS,
@@ -30,14 +32,45 @@ ChartJS.register(
 
 const ChildReports = () => {
   const { childrenList, loading: childrenLoading } = useChild();
-  const [selectedChildId, setSelectedChildId] = useState('');
+  const { user } = useAuth();
+  const [searchParams] = useSearchParams();
+  const isExpertMode = user?.role === 'expert';
+  const expertChildId = searchParams.get('childId');
+  const [selectedChildId, setSelectedChildId] = useState(expertChildId || '');
   const [reportData, setReportData] = useState(null);
+  const [assessmentResults, setAssessmentResults] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [showChildList, setShowChildList] = useState(false);
+  const [allChildren, setAllChildren] = useState([]);
+  const [allChildrenLoading, setAllChildrenLoading] = useState(false);
 
-  // Load saved child ID from localStorage or use first child
+  // For experts: fetch all children across all caregivers
   useEffect(() => {
+    if (!isExpertMode) return;
+    const fetchAll = async () => {
+      try {
+        setAllChildrenLoading(true);
+        const res = await childService.getAllChildren();
+        const list = (res.data || []).map(c => ({ ...c, id: c._id || c.id }));
+        setAllChildren(list);
+        if (list.length > 0 && !selectedChildId) {
+          setSelectedChildId(list[0].id);
+        }
+      } catch (err) {
+        console.error('Error fetching all children:', err);
+      } finally {
+        setAllChildrenLoading(false);
+      }
+    };
+    fetchAll();
+  }, [isExpertMode]);
+
+  const displayChildren = isExpertMode ? allChildren : childrenList;
+
+  // Load saved child ID from localStorage or use first child (caregiver only)
+  useEffect(() => {
+    if (isExpertMode) return;
     if (childrenList.length > 0 && !selectedChildId) {
       const savedChildId = localStorage.getItem('lastSelectedChildForReport');
       
@@ -50,7 +83,7 @@ const ChildReports = () => {
         setSelectedChildId(childrenList[0].id);
       }
     }
-  }, [childrenList]);
+  }, [childrenList, isExpertMode]);
 
   // Save selected child ID to localStorage whenever it changes
   useEffect(() => {
@@ -78,15 +111,23 @@ const ChildReports = () => {
     try {
       setLoading(true);
       setError('');
-      const response = await childService.getChildReport(selectedChildId);
-      
-      // Transform data structure: stats endpoint returns { child, totalActivities, ... }
-      // Component expects { child, statistics: { totalActivities, ... } }
-      const { child, ...statistics } = response.data;
-      setReportData({
-        child,
-        statistics
-      });
+      const [reportResponse, assessmentResponse] = await Promise.allSettled([
+        childService.getChildReport(selectedChildId),
+        assessmentService.getChildResults(selectedChildId)
+      ]);
+
+      if (reportResponse.status === 'fulfilled') {
+        const { child, ...statistics } = reportResponse.value.data;
+        setReportData({ child, statistics });
+      } else {
+        throw reportResponse.reason;
+      }
+
+      if (assessmentResponse.status === 'fulfilled') {
+        setAssessmentResults(assessmentResponse.value.data);
+      } else {
+        setAssessmentResults(null);
+      }
     } catch (err) {
       console.error('Error loading report:', err);
       setError(err.message || 'Failed to load report');
@@ -126,11 +167,11 @@ const ChildReports = () => {
       }, 100);
     } catch (err) {
       console.error('PDF Download Error:', err);
-      alert('Failed to download PDF. Please disable IDM for localhost or try a different browser. Error: ' + (err.message || 'Unknown error'));
+      alert('Failed to download PDF. ' + (err.message || 'Please try again.'));
     }
   };
 
-  if (childrenLoading) {
+  if ((childrenLoading && !isExpertMode) || allChildrenLoading) {
     return (
       <div className="container mt-5 text-center">
         <div className="spinner-border text-primary" role="status">
@@ -140,7 +181,7 @@ const ChildReports = () => {
     );
   }
 
-  if (childrenList.length === 0) {
+  if (!isExpertMode && childrenList.length === 0) {
     return (
       <div className="container mt-5">
         <div className="empty-state">
@@ -152,7 +193,21 @@ const ChildReports = () => {
     );
   }
 
-  const selectedChild = childrenList.find(c => c.id === selectedChildId);
+  if (isExpertMode && allChildren.length === 0) {
+    return (
+      <div className="container mt-5">
+        <div className="empty-state">
+          <i className="bi bi-people"></i>
+          <h4>No Children Found</h4>
+          <p>No children have been registered in the system yet.</p>
+        </div>
+      </div>
+    );
+  }
+
+  const selectedChild = isExpertMode
+    ? allChildren.find(c => c.id === selectedChildId) || reportData?.child
+    : childrenList.find(c => c.id === selectedChildId);
 
   // Prepare chart data
   const progressChartData = reportData?.statistics?.progressOverTime ? {
@@ -255,7 +310,7 @@ const ChildReports = () => {
               }}
             >
               <div className="list-group list-group-flush">
-                {childrenList.map(child => (
+                {displayChildren.map(child => (
                   <button
                     key={child.id}
                     className={`list-group-item list-group-item-action d-flex align-items-center`}

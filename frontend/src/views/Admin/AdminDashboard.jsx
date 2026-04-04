@@ -125,7 +125,7 @@ const AdminDashboard = () => {
                   <i className="bi bi-star-fill fs-1 me-3 text-white opacity-75"></i>
                   <div>
                     <div className="text-white opacity-75 small">Experts</div>
-                    <h2 className="text-white mb-0">{stats?.byRole?.expert || 0}</h2>
+                    <h2 className="text-white mb-0">{stats?.experts || 0}</h2>
                   </div>
                 </div>
               </div>

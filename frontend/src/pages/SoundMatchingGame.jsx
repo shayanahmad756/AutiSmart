@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useChild } from '../context/ChildContext';
-import ChildSelector from '../components/ChildSelector';
 import '../styles/soundMatching.css';
 
 const SoundMatchingGame = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { selectedChild, recordActivity } = useChild();
   const [currentLevel, setCurrentLevel] = useState(1);
   const [score, setScore] = useState(0);
@@ -198,7 +198,8 @@ const SoundMatchingGame = () => {
 
   // Move to next level
   const nextLevel = () => {
-    if (currentLevel < 10) {
+    const limit = location.state?.maxLevel ?? 10;
+    if (currentLevel < limit) {
       setCurrentLevel(currentLevel + 1);
       setScore(0);
       setRoundsCompleted(0);
@@ -235,6 +236,12 @@ const SoundMatchingGame = () => {
     selectNewRound();
   };
 
+  // Auto-start when navigated from Games page
+  useEffect(() => {
+    if (location.state?.autoStart) startGame();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   return (
     <div className="sound-matching-container">
       {/* Audio elements */}
@@ -242,20 +249,15 @@ const SoundMatchingGame = () => {
       <audio ref={correctAudioRef} />
 
       {/* Header */}
-      <div className="game-header">
-        <button className="back-button" onClick={() => navigate('/games')}>
-          <i className="bi bi-arrow-left"></i> Back
+      <div style={{ maxWidth: '680px', margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+        <button className="btn btn-outline-secondary rounded-pill" style={{ fontWeight: '700' }} onClick={() => navigate('/games')}>
+          ← Back
         </button>
-        <h1 className="game-title">
-          <i className="bi bi-music-note-beamed"></i> Sound Matching
+        <h1 style={{ fontWeight: '900', fontSize: '1.55rem', margin: 0, color: '#2d3748' }}>
+          🎵 Sound Matching
         </h1>
-        <div className="header-stats">
-          <div className="level-badge" style={{ background: currentLevelConfig ? `var(--soft-${currentLevelConfig.color})` : 'var(--soft-blue)' }}>
-            Level {currentLevel}
-          </div>
-          <div className="score-display">
-            <i className="bi bi-star-fill"></i> {score}
-          </div>
+        <div style={{ background: '#fdfcfa', borderRadius: '20px', padding: '6px 18px', fontWeight: '800', color: '#61C3B4', fontSize: '1.15rem', boxShadow: '0 2px 8px rgba(97,195,180,0.15)' }}>
+          Level {currentLevel} · ⭐ {score}
         </div>
       </div>
 
@@ -267,24 +269,7 @@ const SoundMatchingGame = () => {
             <h2>Listen & Match</h2>
             <p>Listen to the sound and click the matching picture</p>
 
-            {/* Child Selector */}
-            <div className="mb-4">
-              <ChildSelector />
-            </div>
 
-            {!selectedChild && (
-              <div className="alert alert-warning">
-                <i className="bi bi-exclamation-triangle-fill me-2"></i>
-                Please select a child to track progress!
-              </div>
-            )}
-
-            {selectedChild && (
-              <div className="alert alert-success">
-                <i className="bi bi-person-check-fill me-2"></i>
-                Playing as <strong>{selectedChild.name}</strong> - Progress will be recorded automatically!
-              </div>
-            )}
 
             <div className="level-info">
               <div className={`level-badge-large bg-${currentLevelConfig.color}`}>
@@ -397,6 +382,30 @@ const SoundMatchingGame = () => {
               <p>Great job!</p>
             </div>
           )}
+
+          {/* How to Play & Tips */}
+          <div className="card border-0 shadow-sm mt-4" style={{ borderRadius: '16px', background: 'linear-gradient(135deg, #667eea15 0%, #764ba215 100%)' }}>
+            <div className="card-body p-4">
+              <h5 className="mb-3"><i className="bi bi-lightbulb-fill text-warning me-2"></i>How to Play &amp; Tips</h5>
+              <div className="row">
+                <div className="col-md-6">
+                  <h6 className="fw-bold mb-2">Level Details:</h6>
+                  <ul className="mb-3">
+                    <li>Level {currentLevel} of 10</li>
+                    <li>Rounds to complete: {currentLevelConfig.roundsNeeded}</li>
+                  </ul>
+                </div>
+                <div className="col-md-6">
+                  <h6 className="fw-bold mb-2">Tips for Success:</h6>
+                  <ul className="mb-0">
+                    <li>Listen carefully before clicking</li>
+                    <li>Use "Play Sound Again" if unsure</li>
+                    <li>Match the picture to the sound</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

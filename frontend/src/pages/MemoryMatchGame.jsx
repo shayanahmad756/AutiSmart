@@ -1,10 +1,11 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useChild } from '../context/ChildContext';
-import ChildSelector from '../components/ChildSelector';
 
 const MemoryMatchGame = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const { autoStart, maxLevel } = location.state || {};
   const { selectedChild, recordActivity } = useChild();
   const [cards, setCards] = useState([]);
   const [flipped, setFlipped] = useState([]);
@@ -18,29 +19,41 @@ const MemoryMatchGame = () => {
   const [bestTimes, setBestTimes] = useState({});
   const [showPreview, setShowPreview] = useState(true);
   const [previewTimer, setPreviewTimer] = useState(5);
+  const [gameFailed, setGameFailed] = useState(false);
 
-  // All available symbols - expanded for higher levels
+  // All available symbols - daily-use items children recognise
   const allSymbols = [
-    '🎮', '🎨', '🎭', '🎪', '🎯', '🎲', '🎸', '🎺', '🎹', '🎬', 
-    '🎤', '🎧', '⚽', '🏀', '🎾', '🏐', '⚡', '🌟', '🎈', '🎁', 
-    '🚀', '🌈', '🦋', '🌺', '🍎', '🍕', '🎂', '🍭', '🐶', '🐱',
-    '🎻', '🥁', '🎵', '🎶', '🏈', '⚾', '🥎', '🏐', '🎳', '🏓',
-    '🏸', '🥅', '🥇', '🥈', '🥉', '🏆', '🎗️', '🏅', '🎖️', '⭐',
-    '💫', '✨', '🌙', '☀️', '🌞', '🌝', '🌛', '🌜', '🌚', '🌕',
-    '🌖', '🌗', '🌘', '🌑', '🌒', '🌓', '🌔', '🌍', '🌎', '🌏',
-    '🌐', '🗺️', '🗾', '🧭', '🏔️', '⛰️', '🌋', '🗻', '🏕️', '🏖️',
-    '🏜️', '🏝️', '🏞️', '🏟️', '🏛️', '🏗️', '🧱', '🏘️', '🏚️', '🏠',
-    '🏡', '🏢', '🏣', '🏤', '🏥', '🏦', '🏨', '🏩', '🏪', '🏫',
-    '🏬', '🏭', '🏯', '🏰', '💒', '🗼', '🗽', '⛪', '🕌', '🛕',
-    '🕍', '⛩️', '🕋', '⛲', '⛺', '🌁', '🌃', '🏙️', '🌄', '🌅',
-    '🌆', '🌇', '🌉', '🎠', '🎡', '🎢', '💈', '🎪', '🚂', '🚃',
-    '🚄', '🚅', '🚆', '🚇', '🚈', '🚉', '🚊', '🚝', '🚞', '🚋',
-    '🚌', '🚍', '🚎', '🚐', '🚑', '🚒', '🚓', '🚔', '🚕', '🚖',
-    '🚗', '🚘', '🚙', '🚚', '🚛', '🚜', '🏎️', '🏍️', '🛵', '🦽',
-    '🦼', '🛺', '🚲', '🛴', '🛹', '🛼', '🚏', '🛣️', '🛤️', '🛢️',
-    '⛽', '🚨', '🚥', '🚦', '🛑', '🚧', '⚓', '⛵', '🛶', '🚤',
-    '🛳️', '⛴️', '🛥️', '🚢', '✈️', '🛩️', '🛫', '🛬', '🪂', '💺',
-    '🚁', '🚟', '🚠', '🚡', '🛰️', '🚀', '🛸', '🛎️', '🧳', '⌛'
+    // Animals (familiar)
+    '🐱', '🐶', '🐰', '🐹', '🦊', '🐻', '🐼', '🐨', '🐯', '🦁',
+    '🐮', '🐷', '🐸', '🐢', '🦆', '🐧', '🐔', '🦋', '🐝', '🐟',
+    // Food & fruits
+    '🍎', '🍊', '🍋', '🍇', '🍓', '🍒', '🍑', '🍌', '🍉', '🍍',
+    '🥝', '🍅', '🥦', '🥕', '🌽', '🍞', '🧇', '🥞', '🍳', '🥚',
+    '🍕', '🍔', '🌮', '🥛', '🍵', '🧃', '🍰', '🎂', '🍩', '🍪',
+    // Clothing & accessories
+    '👕', '👖', '👗', '🧥', '👒', '🧢', '👟', '🧤', '🧣', '🎒',
+    // Home & everyday objects
+    '🛏️', '🚿', '🪥', '🚽', '🪑', '📺', '💻', '📱', '🔑', '🪴',
+    '🧹', '🧺', '🪞', '🕯️', '🛒', '🧸', '🎁', '🎀', '🎈', '🪆',
+    // School items
+    '📚', '✏️', '📝', '📐', '📏', '🖊️', '🎨', '✂️', '📌', '📎',
+    // Transport (child-friendly)
+    '🚗', '🚌', '🚲', '🛴', '✈️', '🚂', '🚑', '🚒', '⛵', '🚀',
+    // Nature & weather
+    '🌸', '🌺', '🌻', '🌼', '🌷', '🌿', '🍃', '🌊', '🌈', '☀️',
+    '🌙', '⭐', '❄️', '🔥', '🌧️', '⛅', '🌵', '🍄', '🌱', '🍂',
+    // Sports & play
+    '⚽', '🏀', '🎾', '🏐', '🏈', '⚾', '🎱', '🏊', '🚴', '🎿',
+    // Toys
+    '🧩', '🎯', '🎲', '🪀', '🎸', '🎺', '🎹', '🎭', '🎪', '🎠',
+    // Facial & family
+    '😊', '😂', '😍', '🤗', '😴', '👶', '👧', '👦', '👩', '👨',
+    // Miscellaneous daily-use
+    '📸', '⌚', '💡', '🔦', '🌂', '🧲', '🎵', '🎶', '🖼️', '🗝️',
+    '🧃', '🍦', '🥤', '☕', '🍽️', '🥄', '🍴', '🔔', '📫', '🎙️',
+    '🧼', '🪣', '💊', '🩺', '🩹', '🎓', '🏫', '⛪', '🏥', '🏦',
+    '🚦', '⛽', '🚧', '🅿️', '🛒', '🗑️', '📦', '🧴', '🧻', '🪟',
+    '🪤', '🧯', '🚪', '🪜', '🧲', '🔧', '🔨', '🪓', '🗡️', '🛡️'
   ];
 
   // Level configurations - 10 levels (gradual progression with square grids)
@@ -69,11 +82,19 @@ const MemoryMatchGame = () => {
     let interval;
     if (isRunning) {
       interval = setInterval(() => {
-        setTimer((prevTimer) => prevTimer + 1);
+        setTimer((prevTimer) => {
+          const next = prevTimer + 1;
+          if (next >= currentLevelConfig.time) {
+            setIsRunning(false);
+            setGameFailed(true);
+            return currentLevelConfig.time;
+          }
+          return next;
+        });
       }, 1000);
     }
     return () => clearInterval(interval);
-  }, [isRunning]);
+  }, [isRunning, currentLevelConfig.time]);
 
   // Preview timer effect
   useEffect(() => {
@@ -123,6 +144,7 @@ const MemoryMatchGame = () => {
     setIsRunning(false);
     setShowPreview(true);
     setPreviewTimer(5);
+    setGameFailed(false);
   };
 
   const calculateScore = () => {
@@ -211,7 +233,8 @@ const MemoryMatchGame = () => {
   };
 
   const handleNextLevel = () => {
-    if (currentLevel < levels.length) {
+    const cap = maxLevel != null ? maxLevel : levels.length;
+    if (currentLevel < Math.min(levels.length, cap)) {
       setCurrentLevel(currentLevel + 1);
       setGameWon(false);
     }
@@ -233,115 +256,42 @@ const MemoryMatchGame = () => {
   };
 
   return (
-    <div className="container mt-4 mb-5">
+    <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #f8f6f3 0%, #e8f9f6 100%)', padding: '20px 0' }}>
+      <div className="container py-2">
       {/* Header */}
-      <div className="d-flex justify-content-between align-items-center mb-4">
-        <div>
-          <h1 className="text-primary-custom mb-2">
-            <i className="bi bi-grid-3x3-gap me-2"></i>
-            Memory Match Therapy Game
-          </h1>
-          <p className="text-muted mb-0">Level {currentLevel}: {currentLevelConfig.name} - {currentLevelConfig.gridSize}x{currentLevelConfig.gridSize} Grid!</p>
-        </div>
-        <button className="btn btn-outline-secondary" onClick={() => navigate('/games')}>
-          <i className="bi bi-arrow-left me-2"></i>
-          Back to Therapy Games
+      <div style={{ margin: '0 auto 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '10px' }}>
+        <button className="btn btn-outline-secondary rounded-pill" style={{ fontWeight: '700' }} onClick={() => navigate('/games')}>
+          ← Back
         </button>
+        <h1 style={{ fontWeight: '900', fontSize: '1.55rem', margin: 0, color: '#2d3748' }}>
+          🃏 Memory Match
+        </h1>
+        <div style={{ background: '#fdfcfa', borderRadius: '20px', padding: '6px 18px', fontWeight: '800', color: '#61C3B4', fontSize: '1.15rem', boxShadow: '0 2px 8px rgba(97,195,180,0.15)' }}>
+          Level {currentLevel} · 🔄 {moves} moves
+        </div>
       </div>
 
-      {/* Child Selector */}
-      <ChildSelector />
-
-      {/* Activity tracking notice */}
-      {!selectedChild && (
-        <div className="alert alert-info mb-4">
-          <i className="bi bi-info-circle me-2"></i>
-          Select a child above to track their progress and performance automatically.
+      {/* Countdown Timer */}
+      {(isRunning || moves > 0) && !gameWon && (
+        <div className="text-center mb-3">
+          <span style={{
+            display: 'inline-block',
+            background: (currentLevelConfig.time - timer) <= 15 ? '#fee2e2' : '#fdfcfa',
+            color: (currentLevelConfig.time - timer) <= 15 ? '#dc2626' : '#61C3B4',
+            border: `2px solid ${(currentLevelConfig.time - timer) <= 15 ? '#dc2626' : '#61C3B4'}`,
+            borderRadius: '50px',
+            padding: '6px 22px',
+            fontWeight: '800',
+            fontSize: '1.15rem',
+            boxShadow: '0 2px 8px rgba(97,195,180,0.15)',
+            transition: 'color 0.3s, border-color 0.3s, background 0.3s'
+          }}>
+            ⏱ {formatTime(Math.max(0, currentLevelConfig.time - timer))} remaining
+          </span>
         </div>
       )}
-      {selectedChild && (
-        <div className="alert alert-success mb-4">
-          <i className="bi bi-check-circle me-2"></i>
-          Playing as <strong>{selectedChild.name}</strong> - Progress will be recorded automatically!
-        </div>
-      )}
 
-      {/* Level Progress Bar */}
-      <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: '12px' }}>
-        <div className="card-body p-3">
-          <div className="d-flex justify-content-between align-items-center mb-2">
-            <h6 className="mb-0 fw-bold">Level Progress</h6>
-            <span className="badge" style={{ backgroundColor: '#59B5AA', color: '#fff' }}>Total Score: {totalScore}</span>
-          </div>
-          <div className="d-flex gap-2">
-            {levels.map((level) => (
-              <div
-                key={level.level}
-                className={`flex-fill text-center p-2 rounded ${
-                  level.level === currentLevel
-                    ? `bg-${level.color} text-white`
-                    : level.level < currentLevel
-                    ? 'bg-success text-white'
-                    : 'bg-light text-muted'
-                }`}
-                style={{ cursor: 'pointer', transition: 'all 0.3s ease' }}
-                onClick={() => handleLevelSelect(level.level)}
-              >
-                <small className="fw-bold">{level.level}</small>
-                <div style={{ fontSize: '0.7rem' }}>{level.name}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-
-      {/* Game Stats */}
-      <div className="row g-3 mb-4">
-        <div className="col-md-3">
-          <div className="card border-0 shadow-sm" style={{ borderRadius: '12px' }}>
-            <div className="card-body text-center">
-              <i className="bi bi-clock fs-3 mb-2" style={{ color: '#59B5AA' }}></i>
-              <h6 className="text-muted mb-1">Time</h6>
-              <h4 className="mb-0 fw-bold">{formatTime(timer)}</h4>
-              {bestTimes[currentLevel] && (
-                <small className="text-success">Best: {formatTime(bestTimes[currentLevel])}</small>
-              )}
-            </div>
-          </div>
-        </div>
-        <div className="col-md-3">
-          <div className="card border-0 shadow-sm" style={{ borderRadius: '12px' }}>
-            <div className="card-body text-center">
-              <i className="bi bi-cursor-fill fs-3 text-info mb-2"></i>
-              <h6 className="text-muted mb-1">Moves</h6>
-              <h4 className="mb-0 fw-bold">{moves}</h4>
-              <small className={moves > currentLevelConfig.maxMoves ? 'text-danger' : 'text-success'}>
-                Max: {currentLevelConfig.maxMoves}
-              </small>
-            </div>
-          </div>
-        </div>
-        <div className="col-md-3">
-          <div className="card border-0 shadow-sm" style={{ borderRadius: '12px' }}>
-            <div className="card-body text-center">
-              <i className="bi bi-trophy-fill fs-3 text-warning mb-2"></i>
-              <h6 className="text-muted mb-1">Matched</h6>
-              <h4 className="mb-0 fw-bold">{matched.length / 2} / {Math.floor((currentLevelConfig.gridSize * currentLevelConfig.gridSize) / 2)}</h4>
-            </div>
-          </div>
-        </div>
-        <div className="col-md-3">
-          <div className="card border-0 shadow-sm" style={{ borderRadius: '12px' }}>
-            <div className="card-body text-center">
-              <i className="bi bi-star-fill fs-3 text-success mb-2"></i>
-              <h6 className="text-muted mb-1">Level Score</h6>
-              <h4 className="mb-0 fw-bold">{gameWon ? calculateScore() : 0}</h4>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Preview Timer Banner */}
+      {/* Preview Timer Banner */}}
       {showPreview && (
         <div className="alert alert-info border-0 shadow-sm mb-4" style={{ borderRadius: '12px' }}>
           <div className="d-flex align-items-center justify-content-center">
@@ -554,6 +504,45 @@ const MemoryMatchGame = () => {
           </div>
         </div>
       </div>
+      </div>
+
+      {/* Fail Overlay */}
+      {gameFailed && (
+        <div style={{
+          position: 'fixed', inset: 0,
+          background: 'rgba(0,0,0,0.55)',
+          display: 'flex', alignItems: 'center', justifyContent: 'center',
+          zIndex: 1000
+        }}>
+          <div style={{
+            background: '#fdfcfa', borderRadius: '24px',
+            padding: '40px 36px', maxWidth: '380px', width: '90%',
+            textAlign: 'center',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.18)'
+          }}>
+            <div style={{ fontSize: '3.5rem', marginBottom: '12px' }}>⏰</div>
+            <h2 style={{ fontWeight: '900', color: '#2d3748', marginBottom: '8px' }}>Time's Up!</h2>
+            <p style={{ color: '#5a6477', marginBottom: '28px' }}>
+              You matched {Math.floor(matched.length / 2)} of {Math.floor((currentLevelConfig.gridSize * currentLevelConfig.gridSize) / 2)} pairs
+            </p>
+            <div style={{ display: 'flex', gap: '12px', justifyContent: 'center' }}>
+              <button
+                className="btn rounded-pill px-4 py-2 fw-bold"
+                style={{ background: '#61C3B4', color: '#fff', border: 'none' }}
+                onClick={handleRestartLevel}
+              >
+                🔄 Retry
+              </button>
+              <button
+                className="btn btn-outline-secondary rounded-pill px-4 py-2 fw-bold"
+                onClick={() => navigate('/games')}
+              >
+                Leave
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

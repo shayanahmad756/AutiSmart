@@ -7,7 +7,7 @@ const StatCard = ({ value, label, icon, variant = 'stat' }) => {
           <div className="stat-label">{label}</div>
         </div>
         {icon && (
-          <div className="fs-1 text-muted opacity-50">
+          <div className="fs-1 text-muted opacity-50" style={{ paddingRight: '8px' }}>
             <i className={`bi ${icon}`}></i>
           </div>
         )}

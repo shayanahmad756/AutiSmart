@@ -17,12 +17,12 @@ export const AuthProvider = ({ children }) => {
   const [sessionExpired, setSessionExpired] = useState(false);
   const [preloadedData, setPreloadedData] = useState(null);
 
-  // Auto logout after 3 minutes of inactivity
+  // Auto logout after 15 minutes of inactivity
   useEffect(() => {
     let logoutTimer;
     let activityTimer;
 
-    const SESSION_TIMEOUT = 3 * 60 * 1000; // 3 minutes in milliseconds
+    const SESSION_TIMEOUT = 15 * 60 * 1000; // 15 minutes in milliseconds
 
     const resetTimer = () => {
       // Clear existing timers

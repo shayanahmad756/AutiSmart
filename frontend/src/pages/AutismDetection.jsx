@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Webcam from 'react-webcam';
 import { useChild } from '../context/ChildContext';
+import ChildSelector from '../components/ChildSelector';
 import childAPI from '../api/child.api';
 import '../styles/AutismDetection.css';
 
@@ -11,7 +12,7 @@ const DISCLAIMER =
 
 const AutismDetection = () => {
   const navigate = useNavigate();
-  const { childrenList, selectedChild, selectChild, loading: childrenLoading } = useChild();
+  const { selectedChild } = useChild();
 
   // ── Local state ─────────────────────────────────────────────────────────────
   const [mode, setMode] = useState('upload'); // 'upload' | 'camera'
@@ -125,9 +126,6 @@ const AutismDetection = () => {
     <div className="autism-detection-page container-fluid py-4 px-3 px-md-4">
       {/* ── Header ── */}
       <div className="d-flex align-items-center gap-3 mb-4">
-        <button className="btn btn-sm btn-outline-secondary" onClick={() => navigate(-1)}>
-          <i className="bi bi-arrow-left"></i>
-        </button>
         <div>
           <h4 className="mb-0 fw-bold">Autism Screen Detection</h4>
           <p className="text-muted small mb-0">Upload or capture your child's facial photo for AI screening</p>
@@ -144,40 +142,15 @@ const AutismDetection = () => {
         {/* ── Left column: child selector + image input ── */}
         <div className="col-12 col-lg-6">
           {/* Child selector */}
-          <div className="card shadow-sm mb-4">
-            <div className="card-body">
-              <h6 className="card-title fw-semibold mb-3">
-                <i className="bi bi-person-check me-2 text-primary"></i>Select Child
-              </h6>
-              {childrenLoading ? (
-                <div className="text-center py-2">
-                  <div className="spinner-border spinner-border-sm" role="status" />
-                </div>
-              ) : childrenList.length === 0 ? (
-                <p className="text-muted small mb-0">
-                  No children added yet.{' '}
-                  <button className="btn btn-link btn-sm p-0" onClick={() => navigate('/child-management')}>
-                    Add a child
-                  </button>
-                </p>
-              ) : (
-                <div className="row g-2">
-                  {childrenList.map(child => (
-                    <div key={child.id} className="col-auto">
-                      <button
-                        className={`child-pill ${selectedChild?.id === child.id ? 'active' : ''}`}
-                        onClick={() => { selectChild(child); resetCapture(); }}
-                      >
-                        <span className="child-pill-avatar">{child.name.charAt(0).toUpperCase()}</span>
-                        <span>{child.name}</span>
-                        <span className="text-muted small ms-1">({child.age}y)</span>
-                      </button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
+          <div className="mb-4">
+            <ChildSelector onChildSelect={resetCapture} />
           </div>
+          {selectedChild && (
+            <div className="alert alert-success d-flex align-items-center mb-4" role="alert">
+              <i className="bi bi-person-check-fill me-3 fs-4"></i>
+              <div>Scanning for <strong>{selectedChild.name}</strong> — Results will be saved automatically!</div>
+            </div>
+          )}
 
           {/* Mode toggle */}
           <div className="card shadow-sm mb-4">

@@ -209,21 +209,16 @@ const CaregiverDashboard = () => {
             }}>
               <div className="card-body p-4">
                 <div className="d-flex justify-content-between align-items-start">
-                  <div className="flex-grow-1 overflow-hidden">
+                  <div className="flex-grow-1">
                     <div className="text-muted small text-uppercase fw-semibold mb-2" style={{ letterSpacing: '0.5px' }}>
-                      Your Email
+                      Your Name
                     </div>
-                    <div className="fw-semibold" style={{
-                      fontSize: 'clamp(0.875rem, 1.5vw, 1.25rem)',
-                      color: '#5EBEB0',
-                      wordBreak: 'break-all',
-                      lineHeight: '1.4'
-                    }}>
-                      {user?.email || 'N/A'}
+                    <div className="fs-3 fw-bold text-capitalize" style={{ color: '#5EBEB0' }}>
+                      {user?.name || 'N/A'}
                     </div>
                   </div>
-                  <div className="fs-2 ms-2 flex-shrink-0" style={{ color: '#5EBEB0', opacity: '0.5' }}>
-                    <i className="bi bi-envelope"></i>
+                  <div className="fs-2" style={{ color: '#5EBEB0', opacity: '0.5' }}>
+                    <i className="bi bi-person"></i>
                   </div>
                 </div>
               </div>

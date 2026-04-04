@@ -1,7 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useChild } from '../context/ChildContext';
-import ChildSelector from '../components/ChildSelector';
 import childAPI from '../api/child.api';
 import '../styles/emotionExplorer.css';
 
@@ -22,20 +21,35 @@ const EMOTIONS = {
   Embarrassed:  { emoji: '😳', label: 'Embarrassed' },
   Proud:        { emoji: '😍', label: 'Proud' },
   Annoyed:      { emoji: '😑', label: 'Annoyed' },
+  Bored:        { emoji: '🥱', label: 'Bored' },
+  Grateful:     { emoji: '🥹', label: 'Grateful' },
+  Hopeful:      { emoji: '🌟', label: 'Hopeful' },
+  Lonely:       { emoji: '😞', label: 'Lonely' },
+  Nervous:      { emoji: '😬', label: 'Nervous' },
+  Relieved:     { emoji: '😅', label: 'Relieved' },
+  Disgusted:    { emoji: '🤢', label: 'Disgusted' },
+  Loving:       { emoji: '🥰', label: 'Loving' },
+  Hurt:         { emoji: '🤕', label: 'Hurt' },
+  Silly:        { emoji: '😜', label: 'Silly' },
 };
 
 // ─── Level Configuration ──────────────────────────────────────────────────────
 const LEVELS = [
-  { level: 1, name: 'Beginner',     color: 'success', pool: ['Happy','Sad','Angry','Surprised'],                                                                 rounds: 6,  timeLimit: 12 },
-  { level: 2, name: 'Beginner+',    color: 'success', pool: ['Happy','Sad','Angry','Surprised'],                                                                 rounds: 6,  timeLimit: 11 },
-  { level: 3, name: 'Elementary',   color: 'info',    pool: ['Happy','Sad','Angry','Surprised','Scared','Calm'],                                                 rounds: 7,  timeLimit: 11 },
-  { level: 4, name: 'Elementary+',  color: 'info',    pool: ['Happy','Sad','Angry','Surprised','Scared','Calm'],                                                 rounds: 7,  timeLimit: 10 },
-  { level: 5, name: 'Intermediate', color: 'primary', pool: ['Happy','Sad','Angry','Surprised','Scared','Calm','Frustrated','Excited'],                          rounds: 8,  timeLimit: 10 },
-  { level: 6, name: 'Intermediate+',color: 'primary', pool: ['Happy','Sad','Angry','Surprised','Scared','Calm','Frustrated','Excited'],                          rounds: 8,  timeLimit: 9  },
-  { level: 7,  name: 'Advanced',     color: 'warning', pool: ['Happy','Sad','Angry','Surprised','Scared','Calm','Frustrated','Excited','Confused','Anxious','Disappointed'], rounds: 9,  timeLimit: 20, mode: 'scenario' },
-  { level: 8,  name: 'Advanced+',    color: 'warning', pool: ['Happy','Sad','Angry','Surprised','Scared','Calm','Frustrated','Excited','Confused','Anxious','Disappointed'], rounds: 9,  timeLimit: 18, mode: 'scenario' },
-  { level: 9,  name: 'Expert',       color: 'danger',  pool: Object.keys(EMOTIONS),                                                                                         rounds: 10, timeLimit: 16, mode: 'scenario' },
-  { level: 10, name: 'Master',       color: 'danger',  pool: Object.keys(EMOTIONS),                                                                                         rounds: 10, timeLimit: 14, mode: 'scenario' },
+  { level: 1,  name: 'Beginner',      color: 'success', pool: ['Happy','Sad','Angry','Surprised'],                                                                                                                  rounds: 4,  timeLimit: 14 },
+  { level: 2,  name: 'Beginner+',     color: 'success', pool: ['Scared','Calm','Loving','Silly'],                                                                                                                   rounds: 4,  timeLimit: 13 },
+  { level: 3,  name: 'Elementary',    color: 'success', pool: ['Happy','Sad','Angry','Surprised','Scared','Calm'],                                                                                                   rounds: 6,  timeLimit: 12 },
+  { level: 4,  name: 'Elementary+',   color: 'info',    pool: ['Bored','Lonely','Loving','Silly','Hopeful','Relieved'],                                                                                              rounds: 6,  timeLimit: 11 },
+  { level: 5,  name: 'Intermediate',  color: 'info',    pool: ['Frustrated','Excited','Confused','Anxious','Nervous','Disgusted'],                                                                                   rounds: 6,  timeLimit: 11 },
+  { level: 6,  name: 'Intermediate+', color: 'info',    pool: ['Happy','Sad','Angry','Surprised','Scared','Calm','Frustrated','Excited'],                                                                            rounds: 8,  timeLimit: 10 },
+  { level: 7,  name: 'Upper-Inter',   color: 'primary', pool: ['Disappointed','Jealous','Embarrassed','Proud','Annoyed','Grateful','Hurt','Nervous'],                                                               rounds: 8,  timeLimit: 10 },
+  { level: 8,  name: 'Upper-Inter+',  color: 'primary', pool: ['Happy','Sad','Confused','Anxious','Bored','Lonely','Loving','Silly','Hopeful','Relieved'],                                                          rounds: 10, timeLimit: 9  },
+  { level: 9,  name: 'Advanced',      color: 'warning', pool: ['Happy','Sad','Angry','Surprised','Scared','Calm','Frustrated','Excited','Confused','Anxious','Disappointed'],                                       rounds: 11, timeLimit: 20, mode: 'scenario' },
+  { level: 10, name: 'Advanced+',     color: 'warning', pool: ['Happy','Sad','Angry','Surprised','Scared','Calm','Frustrated','Excited','Confused','Anxious','Disappointed','Jealous','Embarrassed'],               rounds: 13, timeLimit: 18, mode: 'scenario' },
+  { level: 11, name: 'Expert',        color: 'warning', pool: ['Happy','Sad','Angry','Surprised','Scared','Calm','Frustrated','Excited','Confused','Anxious','Disappointed','Jealous','Embarrassed','Proud','Annoyed'], rounds: 15, timeLimit: 16, mode: 'scenario' },
+  { level: 12, name: 'Expert+',       color: 'danger',  pool: Object.keys(EMOTIONS),                                                                                                                                rounds: 12, timeLimit: 15, mode: 'scenario' },
+  { level: 13, name: 'Master',        color: 'danger',  pool: Object.keys(EMOTIONS),                                                                                                                                rounds: 13, timeLimit: 14, mode: 'scenario' },
+  { level: 14, name: 'Master+',       color: 'danger',  pool: Object.keys(EMOTIONS),                                                                                                                                rounds: 14, timeLimit: 12, mode: 'scenario' },
+  { level: 15, name: 'Champion',      color: 'danger',  pool: Object.keys(EMOTIONS),                                                                                                                                rounds: 15, timeLimit: 10, mode: 'scenario' },
 ];
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -85,18 +99,36 @@ const STATIC_SCENARIOS = [
   { emotion: 'Happy',        scenario: "You come downstairs on your birthday morning and see a pile of presents waiting for you.",                              distractors: ['Excited','Surprised','Proud'] },
   { emotion: 'Annoyed',      scenario: "You are trying to watch your favourite show but someone keeps talking loudly over it.",                                 distractors: ['Frustrated','Angry','Disappointed'] },
   { emotion: 'Calm',         scenario: "You just finished a warm bath and are now reading your favourite book quietly before bed.",                             distractors: ['Happy','Proud','Surprised'] },
+  // ── New emotion scenarios ─────────────────────────────────────────────────
+  { emotion: 'Bored',        scenario: "You have been sitting in the waiting room for an hour with nothing to do and no one to talk to.",                        distractors: ['Calm','Disappointed','Lonely'] },
+  { emotion: 'Grateful',     scenario: "Your teacher stayed after class to help you understand a difficult topic, even though it was her free time.",            distractors: ['Happy','Proud','Relieved'] },
+  { emotion: 'Hopeful',      scenario: "You applied for the school art competition and are waiting to hear if you got selected.",                               distractors: ['Excited','Anxious','Nervous'] },
+  { emotion: 'Lonely',       scenario: "All your friends are busy today and you have no one to play with for the whole afternoon.",                              distractors: ['Sad','Bored','Disappointed'] },
+  { emotion: 'Nervous',      scenario: "You are about to perform your first ever piano recital in front of a large audience.",                                   distractors: ['Anxious','Scared','Excited'] },
+  { emotion: 'Relieved',     scenario: "You thought you had lost your favourite toy, but you found it safely tucked under your bed.",                           distractors: ['Happy','Calm','Grateful'] },
+  { emotion: 'Disgusted',    scenario: "You accidentally bit into a piece of fruit that had gone rotten inside.",                                               distractors: ['Surprised','Angry','Hurt'] },
+  { emotion: 'Loving',       scenario: "Your grandmother gives you the biggest hug when she arrives for your birthday and says how much she missed you.",        distractors: ['Happy','Grateful','Calm'] },
+  { emotion: 'Hurt',         scenario: "Your best friend told another person a secret you trusted only them with.",                                             distractors: ['Sad','Disappointed','Angry'] },
+  { emotion: 'Silly',        scenario: "You are making funny faces in the mirror and doing ridiculous dances around your room just to make yourself laugh.",    distractors: ['Happy','Excited','Relieved'] },
 ];
 
 function getStaticScenarios(cfg) {
   const filtered = STATIC_SCENARIOS.filter(s =>
     cfg.pool.includes(s.emotion) && s.distractors.every(d => cfg.pool.includes(d))
   );
-  return shuffle(filtered).slice(0, cfg.rounds);
+  // One scenario per emotion — no emotion repeats within a level
+  const byEmotion = {};
+  for (const s of shuffle(filtered)) {
+    if (!byEmotion[s.emotion]) byEmotion[s.emotion] = s;
+  }
+  return shuffle(Object.values(byEmotion)).slice(0, cfg.rounds);
 }
 
 // ─── Main Component ───────────────────────────────────────────────────────────
 const EmotionExplorerGame = () => {
   const navigate = useNavigate();
+  const location = useLocation();
+  const maxLevel = location.state?.maxLevel ?? LEVELS.length;
   const { selectedChild, recordActivity } = useChild();
 
   // ── Game state
@@ -129,6 +161,7 @@ const EmotionExplorerGame = () => {
   const timerRef        = useRef(null);
   const startTimeRef    = useRef(null);
   const lastEmotionRef  = useRef(null);
+  const usedEmotionsRef = useRef([]);   // tracks emotions shown this level — no repeats
   const countdownRef    = useRef(null);
   const scenariosRef    = useRef([]);   // avoids stale closure in advanceRound
   const selectedChildRef = useRef(selectedChild);
@@ -137,10 +170,16 @@ const EmotionExplorerGame = () => {
   const levelConfig = LEVELS[currentLevelIdx];
 
   // ── Build a round ────────────────────────────────────────────────────────────
-  const buildRound = useCallback((levelCfg, prevEmotion = null) => {
-    let pool = levelCfg.pool;
-    let available = pool.length > 1 ? pool.filter(k => k !== prevEmotion) : pool;
+  const buildRound = useCallback((levelCfg) => {
+    const pool = levelCfg.pool;
+    // Exclude all emotions already shown this level; reset if pool exhausted
+    let available = pool.filter(k => !usedEmotionsRef.current.includes(k));
+    if (available.length === 0) {
+      usedEmotionsRef.current = [];
+      available = [...pool];
+    }
     const key = available[Math.floor(Math.random() * available.length)];
+    usedEmotionsRef.current.push(key);
     const options = pickChoices(key, pool);
     return { key, options };
   }, []);
@@ -161,6 +200,7 @@ const EmotionExplorerGame = () => {
     setAnswered(null);
     setIsCorrect(null);
     setAiFeedback('');
+    usedEmotionsRef.current = [];
     startTimeRef.current = Date.now();
 
     if (isScenario) {
@@ -203,13 +243,18 @@ const EmotionExplorerGame = () => {
       // Emoji mode
       scenariosRef.current = [];
       const { key, options } = buildRound(cfg);
-      lastEmotionRef.current = key;
       setCorrectEmotion(key);
       setChoices(options);
       setTimer(cfg.timeLimit);
       setScreen('game');
     }
   }, [buildRound]);
+
+  // ── Auto-start when navigated from Games page ────────────────────────────────
+  useEffect(() => {
+    if (location.state?.autoStart) startLevel(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // ── Timer countdown ──────────────────────────────────────────────────────────
   useEffect(() => {
@@ -295,8 +340,7 @@ const EmotionExplorerGame = () => {
           setChoices(shuffle([next.emotion, ...next.distractors]));
         }
       } else {
-        const { key, options } = buildRound(cfg, lastEmotionRef.current);
-        lastEmotionRef.current = key;
+        const { key, options } = buildRound(cfg);
         setCorrectEmotion(key);
         setChoices(options);
       }
@@ -356,7 +400,7 @@ const EmotionExplorerGame = () => {
 
   // ── Auto-advance to next level once feedback is ready ──────────────────────
   useEffect(() => {
-    const isLastLevel = currentLevelIdx >= LEVELS.length - 1;
+    const isLastLevel = currentLevelIdx >= Math.min(maxLevel, LEVELS.length) - 1;
     if (screen !== 'levelComplete' || isLastLevel || loadingFeedback) return;
 
     setCountdown(5);
@@ -397,9 +441,8 @@ const EmotionExplorerGame = () => {
   // ════════════════════════════════════════════════════════════════════════════
   if (screen === 'start') {
     return (
-      <div className="container mt-4 mb-5" style={{ maxWidth: 680 }}>
-        <ChildSelector />
-
+      <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #f8f6f3 0%, #e8f9f6 100%)', padding: '30px 16px' }}>
+      <div className="container" style={{ maxWidth: 680 }}>
         <div className="text-center mb-4">
           <div style={{ fontSize: '4rem', lineHeight: 1 }}>😊</div>
           <h1 className="mt-3 text-primary-custom">Emotion Explorer</h1>
@@ -424,6 +467,33 @@ const EmotionExplorerGame = () => {
             <i className="bi bi-arrow-left me-1"></i>Back
           </button>
         </div>
+
+        <div className="card border-0 shadow-sm mt-4" style={{ borderRadius: '16px', background: 'linear-gradient(135deg, #667eea15 0%, #764ba215 100%)' }}>
+          <div className="card-body p-4">
+            <h5 className="mb-3"><i className="bi bi-lightbulb-fill text-warning me-2"></i>How to Play &amp; Tips</h5>
+            <div className="row">
+              <div className="col-md-6">
+                <h6 className="fw-bold mb-2">Game Info:</h6>
+                <ul className="mb-3">
+                  <li>15 levels — basic to champion emotions</li>
+                  <li>Each level introduces new emotions</li>
+                  <li>Levels 7–10 use story mode</li>
+                  <li>Earn points for fast correct answers</li>
+                </ul>
+              </div>
+              <div className="col-md-6">
+                <h6 className="fw-bold mb-2">Tips for Success:</h6>
+                <ul className="mb-0">
+                  <li>Look at the emoji expression carefully</li>
+                  <li>Read story clues carefully</li>
+                  <li>Trust your first instinct</li>
+                  <li>Answer quickly for bonus points!</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
       </div>
     );
   }
@@ -432,18 +502,20 @@ const EmotionExplorerGame = () => {
   // ══════════════════════════════════════════════════════════════════════════
   if (screen === 'loadingScenarios') {
     return (
-      <div className="container mt-5 mb-5 text-center" style={{ maxWidth: 480 }}>
-        <div style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>📖</div>
-        <h4 className="mb-2">Preparing Story Mode…</h4>
-        <p className="text-muted mb-4">
-          {selectedChildRef.current
-            ? `Generating personalised scenarios for ${selectedChildRef.current.name}…`
-            : 'Loading story scenarios…'}
-        </p>
-        <div className="d-flex justify-content-center gap-2">
-          <div className="spinner-grow spinner-grow-sm text-info" />
-          <div className="spinner-grow spinner-grow-sm text-warning" style={{ animationDelay: '0.15s' }} />
-          <div className="spinner-grow spinner-grow-sm text-success" style={{ animationDelay: '0.3s' }} />
+      <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #f8f6f3 0%, #e8f9f6 100%)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+        <div style={{ maxWidth: '480px', textAlign: 'center', padding: '20px' }}>
+          <div style={{ fontSize: '3.5rem', marginBottom: '1rem' }}>📖</div>
+          <h4 className="mb-2">Preparing Story Mode…</h4>
+          <p className="text-muted mb-4">
+            {selectedChildRef.current
+              ? `Generating personalised scenarios for ${selectedChildRef.current.name}…`
+              : 'Loading story scenarios…'}
+          </p>
+          <div className="d-flex justify-content-center gap-2">
+            <div className="spinner-grow spinner-grow-sm text-info" />
+            <div className="spinner-grow spinner-grow-sm text-warning" style={{ animationDelay: '0.15s' }} />
+            <div className="spinner-grow spinner-grow-sm text-success" style={{ animationDelay: '0.3s' }} />
+          </div>
         </div>
       </div>
     );
@@ -453,14 +525,16 @@ const EmotionExplorerGame = () => {
   // ════════════════════════════════════════════════════════════════════════════
   if (screen === 'game') {
     return (
-      <div className="container mt-4 mb-5" style={{ maxWidth: 560 }}>
+      <div style={{ minHeight: '100vh', background: 'linear-gradient(135deg, #f8f6f3 0%, #e8f9f6 100%)', padding: '20px' }}>
+      <div style={{ maxWidth: '560px', margin: '0 auto' }}>
         {/* Header */}
         <div className="d-flex align-items-center justify-content-between mb-3">
           <button
-            className="btn btn-outline-secondary btn-sm"
+            className="btn btn-outline-secondary rounded-pill"
+            style={{ fontWeight: '700' }}
             onClick={() => navigate('/games')}
           >
-            <i className="bi bi-arrow-left me-1"></i>Back
+            ← Back
           </button>
           <div className="text-center">
             <span className={`badge bg-${cfg.color} me-2`}>Level {cfg.level}</span>
@@ -542,6 +616,42 @@ const EmotionExplorerGame = () => {
                 : `❌ Not quite! It was ${EMOTIONS[correctEmotion].label}`}
           </div>
         )}
+
+        {/* How to Play & Tips */}
+        <div className="card border-0 shadow-sm mt-4" style={{ borderRadius: '16px', background: 'linear-gradient(135deg, #667eea15 0%, #764ba215 100%)' }}>
+          <div className="card-body p-4">
+            <h5 className="mb-3"><i className="bi bi-lightbulb-fill text-warning me-2"></i>How to Play &amp; Tips</h5>
+            <div className="row">
+              <div className="col-md-6">
+                <h6 className="fw-bold mb-2">Level {cfg.level} Details:</h6>
+                <ul className="mb-3">
+                  <li>Difficulty: {cfg.name}</li>
+                  <li>Rounds: {cfg.rounds}</li>
+                  <li>{isScenario ? 'Story-based questions' : 'Emoji recognition mode'}</li>
+                </ul>
+              </div>
+              <div className="col-md-6">
+                <h6 className="fw-bold mb-2">Tips for Success:</h6>
+                <ul className="mb-0">
+                  {isScenario ? (
+                    <>
+                      <li>Read the story carefully</li>
+                      <li>Think how you would feel</li>
+                      <li>Answer before the timer runs out</li>
+                    </>
+                  ) : (
+                    <>
+                      <li>Look at the emoji carefully</li>
+                      <li>Trust your first instinct</li>
+                      <li>Answer quickly for bonus points!</li>
+                    </>
+                  )}
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
       </div>
     );
   }
@@ -550,7 +660,7 @@ const EmotionExplorerGame = () => {
   // ── RENDER: LEVEL COMPLETE SCREEN
   // ════════════════════════════════════════════════════════════════════════════
   if (screen === 'levelComplete') {
-    const isLastLevel = currentLevelIdx >= LEVELS.length - 1;
+    const isLastLevel = currentLevelIdx >= Math.min(maxLevel, LEVELS.length) - 1;
     const pct = maxScore > 0 ? Math.round((score / maxScore) * 100) : 0;
     const stars = pct >= 90 ? 3 : pct >= 60 ? 2 : 1;
 
@@ -673,12 +783,6 @@ const EmotionExplorerGame = () => {
             onClick={() => { cancelCountdown(); startLevel(currentLevelIdx); }}
           >
             <i className="bi bi-arrow-clockwise me-2"></i>Replay This Level
-          </button>
-          <button
-            className="btn btn-outline-primary py-2"
-            onClick={() => { cancelCountdown(); setScreen('start'); }}
-          >
-            <i className="bi bi-list-ul me-2"></i>Choose Level
           </button>
           <button
             className="btn btn-link text-muted"

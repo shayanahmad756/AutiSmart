@@ -15,6 +15,7 @@ import ExpertDashboard from './ExpertDashboard';
 // Import new pages
 import Navbar from '../components/Navbar';
 import Footer from '../components/Footer';
+import NotificationBell from '../components/NotificationBell';
 import Home from '../pages/Home';
 import Assessment from '../pages/Assessment';
 import Games from '../pages/Games';
@@ -23,6 +24,9 @@ import SoundMatchingGame from '../pages/SoundMatchingGame';
 import ColorMatchingGame from '../pages/ColorMatchingGame';
 import EmotionExplorerGame from '../pages/EmotionExplorerGame';
 import CommunicationBuilderGame from '../pages/CommunicationBuilderGame';
+import EyeContactGame from '../pages/EyeContactGame';
+import PatternBuilderGame from '../pages/PatternBuilderGame';
+import PictureWordGame from '../pages/PictureWordGame';
 import Tracker from '../pages/Tracker';
 import Therapy from '../pages/Therapy';
 import Communication from '../pages/Communication';
@@ -42,6 +46,10 @@ import Help from '../pages/Help';
 import ChildManagement from '../pages/ChildManagement';
 import ChildReports from '../pages/ChildReports';
 import AutismDetection from '../pages/AutismDetection';
+import ChildQuizResults from '../pages/ChildQuizResults';
+import ExpertQuizResults from '../pages/ExpertQuizResults';
+import MyExpert from '../pages/MyExpert';
+import AdminExpertAssignments from '../pages/AdminExpertAssignments';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }) => {
@@ -123,6 +131,9 @@ function AppContent() {
         <Route path="/games/color-matching" element={<ColorMatchingGame />} />
         <Route path="/games/emotion-explorer" element={<EmotionExplorerGame />} />
         <Route path="/games/communication-builder" element={<CommunicationBuilderGame />} />
+        <Route path="/games/eye-contact" element={<EyeContactGame />} />
+        <Route path="/games/pattern-builder" element={<PatternBuilderGame />} />
+        <Route path="/games/picture-word" element={<PictureWordGame />} />
         <Route path="/resources" element={<Resources />} />
         <Route path="/leaderboard" element={<Leaderboard />} />
         <Route path="/about" element={<About />} />
@@ -315,6 +326,23 @@ function AppContent() {
           }
         />
 
+        <Route
+          path="/admin/expert-assignments"
+          element={
+            <ProtectedRoute>
+              <AdminExpertAssignments />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/my-expert"
+          element={
+            <ProtectedRoute>
+              <MyExpert />
+            </ProtectedRoute>
+          }
+        />
+
         {/* Child Management Routes */}
         <Route
           path="/children"
@@ -332,11 +360,28 @@ function AppContent() {
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/expert/child/:childId/quiz-results"
+          element={
+            <ProtectedRoute>
+              <ChildQuizResults />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/expert-quiz-results"
+          element={
+            <ProtectedRoute>
+              <ExpertQuizResults />
+            </ProtectedRoute>
+          }
+        />
         
         <Route path="*" element={<Navigate to="/" />} />
       </Routes>
       </main>
       <Footer />
+      <NotificationBell />
     </>
   );
 }

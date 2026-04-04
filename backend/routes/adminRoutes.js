@@ -13,6 +13,11 @@ import {
   updateAssessment,
   deleteAssessment,
   toggleAssessmentStatus,
+  getExpertRequests,
+  getExpertAssignments,
+  approveExpertRequest,
+  rejectExpertRequest,
+  removeExpertAssignment,
 } from '../controllers/adminController.js';
 import { authMiddleware, roleMiddleware } from '../middleware/index.js';
 
@@ -90,5 +95,32 @@ router.put('/assessments/:id/toggle-status', toggleAssessmentStatus);
 // @desc    Delete assessment
 // @access  Private/Admin
 router.delete('/assessments/:id', deleteAssessment);
+
+// ==================== EXPERT ASSIGNMENT ROUTES ====================
+
+// @route   GET /api/admin/expert-requests
+// @desc    Get all pending expert assignment requests
+// @access  Private/Admin
+router.get('/expert-requests', getExpertRequests);
+
+// @route   GET /api/admin/expert-assignments
+// @desc    Get all approved expert assignments
+// @access  Private/Admin
+router.get('/expert-assignments', getExpertAssignments);
+
+// @route   PUT /api/admin/expert-requests/:caregiverId/:expertId/approve
+// @desc    Approve an expert assignment request
+// @access  Private/Admin
+router.put('/expert-requests/:caregiverId/:expertId/approve', approveExpertRequest);
+
+// @route   PUT /api/admin/expert-requests/:caregiverId/:expertId/reject
+// @desc    Reject an expert assignment request
+// @access  Private/Admin
+router.put('/expert-requests/:caregiverId/:expertId/reject', rejectExpertRequest);
+
+// @route   DELETE /api/admin/expert-assignments/:caregiverId/:expertId
+// @desc    Remove an active expert assignment
+// @access  Private/Admin
+router.delete('/expert-assignments/:caregiverId/:expertId', removeExpertAssignment);
 
 export default router;

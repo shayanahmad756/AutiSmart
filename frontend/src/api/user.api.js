@@ -99,6 +99,100 @@ const userAPI = {
       throw error.response?.data || { message: 'Failed to fetch statistics' };
     }
   },
+
+  // ── Expert Assignment (Caregiver) ──────────────────────────────────────────
+
+  /** List all experts — for caregivers to browse */
+  getExperts: async () => {
+    try {
+      const response = await http.get('/auth/experts');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch experts' };
+    }
+  },
+
+  /** Caregiver requests an expert */
+  requestExpert: async (expertId) => {
+    try {
+      const response = await http.post('/auth/expert-request', { expertId });
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to send request' };
+    }
+  },
+
+  /** Caregiver cancels a pending expert request */
+  cancelExpertRequest: async (expertId) => {
+    try {
+      const response = await http.delete(`/auth/expert-request/${expertId}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to cancel request' };
+    }
+  },
+
+  /** Caregiver views their own expert requests */
+  getMyExpertRequests: async () => {
+    try {
+      const response = await http.get('/auth/my-expert-requests');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch requests' };
+    }
+  },
+
+  // ── Expert Assignment (Admin) ──────────────────────────────────────────────
+
+  /** Admin: all pending expert requests */
+  getAdminExpertRequests: async () => {
+    try {
+      const response = await http.get('/admin/expert-requests');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch expert requests' };
+    }
+  },
+
+  /** Admin: all approved expert assignments */
+  getAdminExpertAssignments: async () => {
+    try {
+      const response = await http.get('/admin/expert-assignments');
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch expert assignments' };
+    }
+  },
+
+  /** Admin: approve a pending request */
+  approveExpertRequest: async (caregiverId, expertId) => {
+    try {
+      const response = await http.put(`/admin/expert-requests/${caregiverId}/${expertId}/approve`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to approve request' };
+    }
+  },
+
+  /** Admin: reject a pending request */
+  rejectExpertRequest: async (caregiverId, expertId) => {
+    try {
+      const response = await http.put(`/admin/expert-requests/${caregiverId}/${expertId}/reject`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to reject request' };
+    }
+  },
+
+  /** Admin: remove an active assignment */
+  removeExpertAssignment: async (caregiverId, expertId) => {
+    try {
+      const response = await http.delete(`/admin/expert-assignments/${caregiverId}/${expertId}`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to remove assignment' };
+    }
+  },
 };
 
 export default userAPI;

@@ -87,6 +87,15 @@ const assessmentAPI = {
       throw error.response?.data || { message: 'Failed to fetch child results' };
     }
   },
+
+  getDetailedQuizResults: async (childId) => {
+    try {
+      const response = await http.get(`/assessments/child/${childId}/quiz-results-detailed`);
+      return response.data;
+    } catch (error) {
+      throw error.response?.data || { message: 'Failed to fetch detailed quiz results' };
+    }
+  },
 };
 
 export default assessmentAPI;
