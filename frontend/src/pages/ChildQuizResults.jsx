@@ -42,8 +42,10 @@ const ChildQuizResults = () => {
         const res = await assessmentAPI.getDetailedQuizResults(childId);
         if (res.success) {
           setData(res.data);
-          const cats = Object.keys(res.data.questionsByCategory || {});
-          if (cats.length > 0) setActiveCategory(cats[0]);
+          const answeredCats = Object.entries(res.data.questionsByCategory || {})
+            .filter(([, qs]) => qs.some((q) => q.selectedOptionIndex !== null))
+            .map(([cat]) => cat);
+          if (answeredCats.length > 0) setActiveCategory(answeredCats[0]);
         } else {
           setError(res.message || 'Failed to load quiz results');
         }
@@ -81,8 +83,17 @@ const ChildQuizResults = () => {
     );
   }
 
-  const { child, assessmentResult, questionsByCategory, hasData } = data || {};
-  const categories = Object.keys(questionsByCategory || {});
+  const { child, assessmentResult, questionsByCategory } = data || {};
+
+  // Only show questions the child has answered
+  const answeredByCategory = Object.fromEntries(
+    Object.entries(questionsByCategory || {}).map(([cat, qs]) => [
+      cat,
+      qs.filter((q) => q.selectedOptionIndex !== null),
+    ]).filter(([, qs]) => qs.length > 0)
+  );
+  const categories = Object.keys(answeredByCategory);
+  const hasData = categories.length > 0;
 
   const scorePercent = assessmentResult?.scorePercentage ?? 0;
   const autismLevel = assessmentResult?.autismLevel;
@@ -153,47 +164,6 @@ const ChildQuizResults = () => {
         </div>
       )}
 
-      {/* Category Score Overview */}
-      {assessmentResult?.categoryScores && (
-        <div className="card border-0 shadow-sm mb-4" style={{ borderRadius: 16 }}>
-          <div className="card-body p-4">
-            <h5 className="fw-bold mb-3">
-              <i className="bi bi-bar-chart me-2 text-primary"></i>
-              Category Performance
-            </h5>
-            <div className="row g-3">
-              {Object.entries(assessmentResult.categoryScores).map(([cat, scores]) => {
-                const pct =
-                  scores.total > 0
-                    ? Math.round((scores.score / (scores.total * 3)) * 100)
-                    : 0;
-                return (
-                  <div key={cat} className="col-md-6">
-                    <div className="d-flex justify-content-between align-items-center mb-1">
-                      <small className="fw-medium">
-                        <i className={`bi ${CATEGORY_ICONS[cat] || 'bi-circle'} me-1`}></i>
-                        {cat}
-                      </small>
-                      <small className="text-muted">{pct}%</small>
-                    </div>
-                    <div className="progress" style={{ height: 8, borderRadius: 8 }}>
-                      <div
-                        className="progress-bar"
-                        style={{
-                          width: `${pct}%`,
-                          background: CATEGORY_COLORS[cat] || '#61C3B4',
-                          borderRadius: 8,
-                        }}
-                      />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* Questions by Category */}
       {hasData ? (
         <div className="card border-0 shadow-sm" style={{ borderRadius: 16 }}>
@@ -228,7 +198,7 @@ const ChildQuizResults = () => {
                       fontSize: '0.7rem',
                     }}
                   >
-                    {questionsByCategory[cat]?.length || 0}
+                    {answeredByCategory[cat]?.length || 0}
                   </span>
                 </button>
               ))}
@@ -236,9 +206,9 @@ const ChildQuizResults = () => {
 
             {/* Questions for Active Category */}
             <div className="p-4">
-              {activeCategory && questionsByCategory[activeCategory] && (
+              {activeCategory && answeredByCategory[activeCategory] && (
                 <div className="d-grid gap-4">
-                  {questionsByCategory[activeCategory].map((q, idx) => (
+                  {answeredByCategory[activeCategory].map((q, idx) => (
                     <QuestionCard key={q.id} question={q} index={idx} categoryColor={CATEGORY_COLORS[activeCategory]} />
                   ))}
                 </div>

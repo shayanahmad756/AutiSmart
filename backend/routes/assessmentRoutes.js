@@ -202,10 +202,15 @@ router.get('/child/:childId/quiz-results-detailed', async (req, res) => {
       });
     }
 
-    // Merge quiz questions with answers, grouped by category
+    // Merge quiz questions with answers, grouped by category.
+    // Deduplicate by question id — a child may have multiple quiz documents
+    // (e.g. quiz regenerated), which would otherwise double-count questions.
+    const seenQuestionIds = new Set();
     const questionsByCategory = {};
     for (const quiz of quizzes) {
       for (const q of quiz.questions) {
+        if (seenQuestionIds.has(q.id)) continue;
+        seenQuestionIds.add(q.id);
         const answer = answerMap[q.id];
         const entry = {
           id: q.id,

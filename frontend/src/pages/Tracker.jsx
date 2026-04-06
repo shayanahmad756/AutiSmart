@@ -3,7 +3,9 @@ import Card from '../components/Card';
 import StatCard from '../components/StatCard';
 import ChildSelector from '../components/ChildSelector';
 import { useChild } from '../context/ChildContext';
+import { useAuth } from '../context/AuthContext';
 import { assessmentService } from '../services';
+import { childService } from '../services';
 import '../styles/assessment.css';
 
 const CATEGORY_ICONS = {
@@ -38,12 +40,58 @@ function getLevelColor(autismLevel) {
 
 const Tracker = () => {
   const { selectedChild } = useChild();
+  const { user } = useAuth();
+  const isExpertMode = user?.role === 'expert';
+
+  // Expert-specific child selection state
+  const [expertChildren, setExpertChildren] = useState([]);
+  const [expertSelectedId, setExpertSelectedId] = useState('');
+  const [expertChildrenLoading, setExpertChildrenLoading] = useState(false);
+  const [showExpertDropdown, setShowExpertDropdown] = useState(false);
+
   const [assessmentData, setAssessmentData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Fetch assigned children for expert
   useEffect(() => {
-    if (!selectedChild?.id) {
+    if (!isExpertMode) return;
+    const fetchExpertChildren = async () => {
+      try {
+        setExpertChildrenLoading(true);
+        const res = await childService.getAllChildren();
+        const list = (res.data || []).map(c => ({ ...c, id: c._id || c.id }));
+        setExpertChildren(list);
+        if (list.length > 0) setExpertSelectedId(list[0].id);
+      } catch (err) {
+        console.error('Failed to load expert children:', err);
+      } finally {
+        setExpertChildrenLoading(false);
+      }
+    };
+    fetchExpertChildren();
+  }, [isExpertMode]);
+
+  // Close expert dropdown when clicking outside
+  useEffect(() => {
+    if (!isExpertMode) return;
+    const handleClickOutside = (e) => {
+      if (showExpertDropdown && !e.target.closest('.tracker-expert-selector')) {
+        setShowExpertDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [showExpertDropdown, isExpertMode]);
+
+  // Effective child id depends on role
+  const effectiveChildId = isExpertMode ? expertSelectedId : selectedChild?.id;
+  const effectiveChildName = isExpertMode
+    ? expertChildren.find(c => c.id === expertSelectedId)?.name
+    : selectedChild?.name;
+
+  useEffect(() => {
+    if (!effectiveChildId) {
       setAssessmentData(null);
       return;
     }
@@ -51,7 +99,7 @@ const Tracker = () => {
       try {
         setLoading(true);
         setError('');
-        const response = await assessmentService.getChildResults(selectedChild.id);
+        const response = await assessmentService.getChildResults(effectiveChildId);
         setAssessmentData(response.data);
       } catch (err) {
         setError(err.message || 'Failed to load assessment data');
@@ -60,7 +108,7 @@ const Tracker = () => {
       }
     };
     fetchData();
-  }, [selectedChild?.id]);
+  }, [effectiveChildId]);
 
   // For each category independently, find the most recent result that actually assessed it (total > 0).
   // This means a focused assessment (e.g. Eye Contact only) won't reset unrelated category bars.
@@ -118,17 +166,66 @@ const Tracker = () => {
 
       {/* Child Selector */}
       <div className="mb-4">
-        <ChildSelector />
+        {isExpertMode ? (
+          expertChildrenLoading ? (
+            <div className="text-muted"><div className="spinner-border spinner-border-sm me-2" role="status"></div>Loading patients...</div>
+          ) : expertChildren.length === 0 ? (
+            <div className="alert alert-info"><i className="bi bi-info-circle me-2"></i>No assigned patients found.</div>
+          ) : (
+            <div className="tracker-expert-selector position-relative" style={{ maxWidth: '400px' }}>
+              <label className="form-label fw-semibold">Select Patient:</label>
+              <button
+                className="btn d-flex align-items-center justify-content-between w-100"
+                style={{ border: '2px solid #5EBDB0', color: '#5EBDB0', backgroundColor: 'transparent' }}
+                onClick={() => setShowExpertDropdown(v => !v)}
+                onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#5EBDB0'; e.currentTarget.style.color = '#fff'; }}
+                onMouseLeave={e => { e.currentTarget.style.backgroundColor = 'transparent'; e.currentTarget.style.color = '#5EBDB0'; }}
+              >
+                <span>
+                  <i className="bi bi-person-circle me-2"></i>
+                  {expertChildren.find(c => c.id === expertSelectedId)
+                    ? `${expertChildren.find(c => c.id === expertSelectedId).name} — ${expertChildren.find(c => c.id === expertSelectedId).age} yrs`
+                    : 'Select a patient'}
+                </span>
+                <i className={`bi bi-chevron-${showExpertDropdown ? 'up' : 'down'}`}></i>
+              </button>
+              {showExpertDropdown && (
+                <div className="position-absolute w-100 bg-white border rounded shadow-sm" style={{ zIndex: 1000, top: '100%', marginTop: '4px', maxHeight: '220px', overflowY: 'auto' }}>
+                  {expertChildren.map(child => (
+                    <button
+                      key={child.id}
+                      className="btn btn-light w-100 text-start d-flex align-items-center gap-2 border-0 rounded-0 py-2 px-3"
+                      style={{ borderBottom: '1px solid #f0f0f0' }}
+                      onClick={() => { setExpertSelectedId(child.id); setShowExpertDropdown(false); }}
+                    >
+                      <div className="rounded-circle d-flex align-items-center justify-content-center text-white fw-bold"
+                        style={{ width: 32, height: 32, backgroundColor: '#5EBDB0', fontSize: '0.85rem', flexShrink: 0 }}>
+                        {child.name.charAt(0).toUpperCase()}
+                      </div>
+                      <div>
+                        <div className="fw-semibold" style={{ fontSize: '0.9rem' }}>{child.name}</div>
+                        <div className="text-muted" style={{ fontSize: '0.78rem' }}>{child.age} years</div>
+                      </div>
+                      {child.id === expertSelectedId && <i className="bi bi-check-circle-fill text-success ms-auto"></i>}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        ) : (
+          <ChildSelector />
+        )}
       </div>
 
-      {!selectedChild && (
+      {!effectiveChildId && (
         <div className="alert alert-info">
           <i className="bi bi-info-circle me-2"></i>
           Please select a child above to view their symptom tracking data.
         </div>
       )}
 
-      {selectedChild && loading && (
+      {effectiveChildId && loading && (
         <div className="text-center my-5">
           <div className="spinner-border text-primary" role="status">
             <span className="visually-hidden">Loading...</span>
@@ -136,21 +233,21 @@ const Tracker = () => {
         </div>
       )}
 
-      {selectedChild && error && (
+      {effectiveChildId && error && (
         <div className="alert alert-danger">
           <i className="bi bi-exclamation-triangle me-2"></i>
           {error}
         </div>
       )}
 
-      {selectedChild && !loading && !error && !hasData && (
+      {effectiveChildId && !loading && !error && !hasData && (
         <div className="alert alert-warning">
           <i className="bi bi-clipboard-x me-2"></i>
-          No assessment data found for <strong>{selectedChild.name}</strong>. Please complete an assessment quiz first.
+          No assessment data found for <strong>{effectiveChildName}</strong>. Please complete an assessment quiz first.
         </div>
       )}
 
-      {selectedChild && !loading && hasData && (
+      {effectiveChildId && !loading && hasData && (
         <>
           {/* Stats Overview */}
           <div className="row g-4 mb-4">

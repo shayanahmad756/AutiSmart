@@ -669,7 +669,7 @@ const ChildReports = () => {
 
             {/* Game Progress by Type */}
             {reportData.statistics.byActivityType && Object.keys(reportData.statistics.byActivityType).filter(name => 
-              ['Memory Match', 'Color Matching', 'Sound Matching'].includes(name)
+              ['Memory Match', 'Color Matching', 'Sound Matching', 'Eye Contact Game', 'Emotion Explorer', 'Pattern Builder', 'Communication Builder'].includes(name)
             ).length > 0 && (
               <div className="report-section">
                 <h3 className="section-title">
@@ -678,7 +678,7 @@ const ChildReports = () => {
                 </h3>
                 <div className="row g-3">
                   {Object.entries(reportData.statistics.byActivityType)
-                    .filter(([name]) => ['Memory Match', 'Color Matching', 'Sound Matching'].includes(name))
+                    .filter(([name]) => ['Memory Match', 'Color Matching', 'Sound Matching', 'Eye Contact Game', 'Emotion Explorer', 'Pattern Builder', 'Communication Builder'].includes(name))
                     .map(([gameName, stats]) => (
                     <div key={gameName} className="col-md-4">
                       <div className="card border-0 shadow-sm h-100" style={{ borderRadius: '12px' }}>
@@ -688,6 +688,10 @@ const ChildReports = () => {
                               {gameName === 'Memory Match' && <i className="bi bi-grid-3x3-gap fs-2 text-primary"></i>}
                               {gameName === 'Color Matching' && <i className="bi bi-palette fs-2 text-success"></i>}
                               {gameName === 'Sound Matching' && <i className="bi bi-music-note-beamed fs-2 text-info"></i>}
+                              {gameName === 'Eye Contact Game' && <i className="bi bi-eye fs-2" style={{ color: '#7c3aed' }}></i>}
+                              {gameName === 'Emotion Explorer' && <i className="bi bi-emoji-smile fs-2 text-warning"></i>}
+                              {gameName === 'Pattern Builder' && <i className="bi bi-grid fs-2 text-danger"></i>}
+                              {gameName === 'Communication Builder' && <i className="bi bi-chat-dots fs-2 text-secondary"></i>}
                             </div>
                             <div>
                               <h5 className="mb-0">{gameName}</h5>

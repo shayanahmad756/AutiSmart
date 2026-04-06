@@ -4,21 +4,21 @@ import Webcam from 'react-webcam';
 import { useChild } from '../context/ChildContext';
 
 const LEVELS = [
-  { level: 1,  goalSeconds: 2,  character: '🦄', backgroundColor: '#e8f5e9', difficultyLabel: 'Easy',   distractions: false },
-  { level: 2,  goalSeconds: 2,  character: '🌟', backgroundColor: '#e3f2fd', difficultyLabel: 'Easy',   distractions: false },
-  { level: 3,  goalSeconds: 3,  character: '🐶', backgroundColor: '#fff8e1', difficultyLabel: 'Easy',   distractions: false },
-  { level: 4,  goalSeconds: 3,  character: '🦋', backgroundColor: '#fce4ec', difficultyLabel: 'Easy',   distractions: false },
-  { level: 5,  goalSeconds: 4,  character: '🐸', backgroundColor: '#e8eaf6', difficultyLabel: 'Easy',   distractions: false },
-  { level: 6,  goalSeconds: 5,  character: '🚀', backgroundColor: '#e0f7fa', difficultyLabel: 'Medium', distractions: true  },
-  { level: 7,  goalSeconds: 6,  character: '🌈', backgroundColor: '#f3e5f5', difficultyLabel: 'Medium', distractions: true  },
-  { level: 8,  goalSeconds: 7,  character: '🎈', backgroundColor: '#fff3e0', difficultyLabel: 'Medium', distractions: true  },
-  { level: 9,  goalSeconds: 7,  character: '🐉', backgroundColor: '#e8f5e9', difficultyLabel: 'Medium', distractions: true  },
-  { level: 10, goalSeconds: 8,  character: '🎪', backgroundColor: '#fbe9e7', difficultyLabel: 'Medium', distractions: true  },
-  { level: 11, goalSeconds: 10, character: '🏆', backgroundColor: '#efebe9', difficultyLabel: 'Hard',   distractions: true  },
-  { level: 12, goalSeconds: 11, character: '🌊', backgroundColor: '#e0f2f1', difficultyLabel: 'Hard',   distractions: true  },
-  { level: 13, goalSeconds: 12, character: '🔥', backgroundColor: '#fce4ec', difficultyLabel: 'Hard',   distractions: true  },
-  { level: 14, goalSeconds: 13, character: '⚡', backgroundColor: '#fffde7', difficultyLabel: 'Hard',   distractions: true  },
-  { level: 15, goalSeconds: 15, character: '🌠', backgroundColor: '#e8eaf6', difficultyLabel: 'Hard',   distractions: true  },
+  { level: 1,  goalSeconds: 10, character: '🦄', backgroundColor: '#e8f5e9', difficultyLabel: 'Easy',   distractions: false },
+  { level: 2,  goalSeconds: 10, character: '🌟', backgroundColor: '#e3f2fd', difficultyLabel: 'Easy',   distractions: false },
+  { level: 3,  goalSeconds: 11, character: '🐶', backgroundColor: '#fff8e1', difficultyLabel: 'Easy',   distractions: false },
+  { level: 4,  goalSeconds: 11, character: '🦋', backgroundColor: '#fce4ec', difficultyLabel: 'Easy',   distractions: false },
+  { level: 5,  goalSeconds: 12, character: '🐸', backgroundColor: '#e8eaf6', difficultyLabel: 'Easy',   distractions: false },
+  { level: 6,  goalSeconds: 13, character: '🚀', backgroundColor: '#e0f7fa', difficultyLabel: 'Medium', distractions: true  },
+  { level: 7,  goalSeconds: 14, character: '🌈', backgroundColor: '#f3e5f5', difficultyLabel: 'Medium', distractions: true  },
+  { level: 8,  goalSeconds: 15, character: '🎈', backgroundColor: '#fff3e0', difficultyLabel: 'Medium', distractions: true  },
+  { level: 9,  goalSeconds: 15, character: '🐉', backgroundColor: '#e8f5e9', difficultyLabel: 'Medium', distractions: true  },
+  { level: 10, goalSeconds: 16, character: '🎪', backgroundColor: '#fbe9e7', difficultyLabel: 'Medium', distractions: true  },
+  { level: 11, goalSeconds: 18, character: '🏆', backgroundColor: '#efebe9', difficultyLabel: 'Hard',   distractions: true  },
+  { level: 12, goalSeconds: 20, character: '🌊', backgroundColor: '#e0f2f1', difficultyLabel: 'Hard',   distractions: true  },
+  { level: 13, goalSeconds: 22, character: '🔥', backgroundColor: '#fce4ec', difficultyLabel: 'Hard',   distractions: true  },
+  { level: 14, goalSeconds: 25, character: '⚡', backgroundColor: '#fffde7', difficultyLabel: 'Hard',   distractions: true  },
+  { level: 15, goalSeconds: 30, character: '🌠', backgroundColor: '#e8eaf6', difficultyLabel: 'Hard',   distractions: true  },
 ];
 
 const CONFETTI_COLORS = ['#ff6b6b', '#ffd93d', '#6bcb77', '#4d96ff', '#ff90e8', '#a8ff78', '#ffb347', '#b19cd9'];
@@ -87,7 +87,7 @@ const EyeContactGame = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const { autoStart, maxLevel } = location.state || {};
-  const { selectedChild } = useChild();
+  const { selectedChild, recordActivity } = useChild();
 
   const [gamePhase, setGamePhase]                   = useState('idle');
   const [currentLevelIndex, setCurrentLevelIndex]   = useState(0);
@@ -115,10 +115,15 @@ const EyeContactGame = () => {
   const scoreRef               = useRef(0);
   const handleLevelCompleteRef = useRef(null);
   const startGazeTimerRef      = useRef(null);
+  const startTimeRef           = useRef(null);
+  const selectedChildRef       = useRef(selectedChild);
+  const recordActivityRef      = useRef(recordActivity);
 
-  useEffect(() => { gamePhaseRef.current = gamePhase; }, [gamePhase]);
-  useEffect(() => { gazeTimeRef.current  = gazeTime;  }, [gazeTime]);
-  useEffect(() => { scoreRef.current     = score;     }, [score]);
+  useEffect(() => { gamePhaseRef.current  = gamePhase;      }, [gamePhase]);
+  useEffect(() => { gazeTimeRef.current   = gazeTime;       }, [gazeTime]);
+  useEffect(() => { scoreRef.current      = score;          }, [score]);
+  useEffect(() => { selectedChildRef.current  = selectedChild;  }, [selectedChild]);
+  useEffect(() => { recordActivityRef.current = recordActivity; }, [recordActivity]);
   useEffect(() => {
     currentLevelIndexRef.current = currentLevelIndex;
     goalSecondsRef.current       = LEVELS[currentLevelIndex].goalSeconds;
@@ -263,6 +268,28 @@ const EyeContactGame = () => {
       setShowConfetti(false);
       const nextIdx = lvlIdx + 1;
       const maxIdx = maxLevel != null ? maxLevel - 1 : LEVELS.length - 1;
+
+      // Record activity after every completed level
+      if (selectedChildRef.current) {
+        const levelsCompleted = lvlIdx + 1;
+        const maxScoreForLevels = LEVELS.slice(0, levelsCompleted).reduce((sum, l) =>
+          sum + 100 * (l.difficultyLabel === 'Hard' ? 3 : l.difficultyLabel === 'Medium' ? 2 : 1), 0);
+        const durationSec = startTimeRef.current ? Math.round((Date.now() - startTimeRef.current) / 1000) : 0;
+        recordActivityRef.current({
+          activityType: 'game',
+          activityName: 'Eye Contact Game',
+          score: newScore,
+          maxScore: maxScoreForLevels,
+          percentage: maxScoreForLevels > 0 ? Math.round((newScore / maxScoreForLevels) * 100) : 0,
+          duration: durationSec,
+          attempts: 1,
+          difficulty: lvlCfg.difficultyLabel.toLowerCase(),
+          correctAnswers: levelsCompleted,
+          incorrectAnswers: 0,
+          details: { levelReached: levelsCompleted, levelName: `Level ${levelsCompleted}`, totalLevels: LEVELS.length }
+        }).catch(err => console.error('Failed to record activity:', err));
+      }
+
       if (nextIdx > maxIdx || nextIdx >= LEVELS.length) {
         setGamePhase('gameComplete'); gamePhaseRef.current = 'gameComplete';
         saveProgress(0, 0);
@@ -294,6 +321,7 @@ const EyeContactGame = () => {
 
   const handleStart = useCallback(() => {
     setEncouragement('');
+    startTimeRef.current = Date.now();
     if (spaceKeyMode) {
       setGamePhase('playing'); gamePhaseRef.current = 'playing';
       gazeTimeRef.current = 0; setGazeTime(0);
@@ -626,10 +654,10 @@ const EyeContactGame = () => {
         ))}
       </div>
 
-      {/* Webcam preview (bottom-right) */}
+      {/* Webcam preview (bottom-left) */}
       {!spaceKeyMode && (
         <div style={{
-          position: 'fixed', bottom: '16px', right: '16px',
+          position: 'fixed', bottom: '16px', left: '16px',
           borderRadius: '12px', overflow: 'hidden',
           boxShadow: '0 4px 16px rgba(0,0,0,0.25)', zIndex: 100,
           border: `2px solid ${faceDetected ? '#22c55e' : '#e5e7eb'}`,

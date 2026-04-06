@@ -5,6 +5,7 @@
 import childDataAccess from '../dataAccess/child.dataAccess.js';
 import activityDataAccess from '../dataAccess/activity.dataAccess.js';
 import User from '../models/User.js';
+import Activity from '../models/Activity.js';
 
 class ChildService {
   /**
@@ -64,10 +65,44 @@ class ChildService {
 
   /**
    * Get all children for an expert (scoped to assigned caregivers only)
+   * Enriched with latest activity stats per child
    */
   async getAllChildrenForExpert(expertId) {
     const assignedIds = await this.getAssignedCaregiverIds(expertId);
-    return childDataAccess.findByCaregiverIds(assignedIds);
+    const children = await childDataAccess.findByCaregiverIds(assignedIds);
+
+    if (children.length === 0) return children;
+
+    // Aggregate latest activity stats per child in one query
+    const childIds = children.map((c) => c._id || c.id);
+    const activityStats = await Activity.aggregate([
+      { $match: { childId: { $in: childIds } } },
+      { $sort: { completedAt: -1 } },
+      {
+        $group: {
+          _id: '$childId',
+          latestActivityAt: { $first: '$completedAt' },
+          latestScore: { $first: '$percentage' },
+          totalActivities: { $sum: 1 },
+        },
+      },
+    ]);
+
+    // Build a lookup map for O(1) merges
+    const statsMap = {};
+    activityStats.forEach((s) => {
+      statsMap[s._id.toString()] = s;
+    });
+
+    // Merge stats into each child object
+    return children.map((child) => {
+      const childObj = child.toObject ? child.toObject() : { ...child };
+      const stats = statsMap[childObj._id.toString()] || {};
+      childObj.latestActivityAt = stats.latestActivityAt || null;
+      childObj.latestScore = stats.latestScore ?? null;
+      childObj.totalActivities = stats.totalActivities || 0;
+      return childObj;
+    });
   }
 
   /**
@@ -185,7 +220,7 @@ class ChildService {
           name: activity.activityName,
           score: activity.percentage,
           completedAt: activity.completedAt,
-          timeTaken: activity.timeTaken
+          timeTaken: activity.duration
         });
       }
       if (activity.activityType === 'assessment') {

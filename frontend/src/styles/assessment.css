@@ -145,6 +145,10 @@
   background: linear-gradient(90deg, #F6BA82 0%, #EC896E 100%) !important;
 }
 
+.bg-danger {
+  background: linear-gradient(90deg, #f87171 0%, #ef4444 100%) !important;
+}
+
 .bg-info {
   background: linear-gradient(90deg, #5EBEB0 0%, #61C3B4 100%) !important;
 }
@@ -523,6 +527,10 @@
 
 .symptom-progress-item.warning-category {
   border-left-color: #ffc107;
+}
+
+.symptom-progress-item.danger-category {
+  border-left-color: #ef4444;
 }
 
 .symptom-progress-item.info-category {

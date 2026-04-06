@@ -349,7 +349,7 @@ const ColorMatchingGame = () => {
             </span>
           </div>
 
-          {/* Progress Bar */}}
+          {/* Progress Bar */}
           <div className="progress-container">
             <div className="progress-label">
               Round {roundsCompleted + 1} of {currentLevelData.roundsNeeded}

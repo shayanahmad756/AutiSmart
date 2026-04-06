@@ -77,12 +77,15 @@ const getGameRecommendations = async (childId) => {
   const latestResult = results[0];
   const categoryScores = latestResult.categoryScores || {};
 
-  // Compute severity (0.0–1.0) for each assessed category
+  // Compute severity (0.0–1.0) for each assessed category.
+  // Each question scores 1–3, so max possible score = total * 3.
+  // Dividing by (total * 3) matches the autism level formula in assessmentResult.service.js
+  // so the SEVERITY_THRESHOLD of 0.40 correctly maps to the Beginner/Intermediate boundary.
   const severities = {};
   for (const [category, data] of Object.entries(categoryScores)) {
     const score = data.score || 0;
     const total = data.total || 1;
-    severities[category] = total > 0 ? score / total : 0;
+    severities[category] = total > 0 ? score / (total * 3) : 0;
   }
 
   // Score each game based on its targeted categories

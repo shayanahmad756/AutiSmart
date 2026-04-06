@@ -291,7 +291,7 @@ const MemoryMatchGame = () => {
         </div>
       )}
 
-      {/* Preview Timer Banner */}}
+      {/* Preview Timer Banner */}
       {showPreview && (
         <div className="alert alert-info border-0 shadow-sm mb-4" style={{ borderRadius: '12px' }}>
           <div className="d-flex align-items-center justify-content-center">

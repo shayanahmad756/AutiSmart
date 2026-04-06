@@ -287,7 +287,7 @@ const Assessment = () => {
                           {Object.entries(categoryScores).map(([category, data]) => {
                             if (data.total === 0) return null;
                             const pct = Math.round(((data.total * 3 - data.score) / (data.total * 3)) * 100);
-                            const barColor = pct >= 60 ? 'success' : pct >= 40 ? 'warning' : 'info';
+                            const barColor = pct >= 60 ? 'success' : pct >= 40 ? 'warning' : 'danger';
                             return (
                               <div key={category} className={`symptom-progress-item ${barColor}-category`}>
                                 <div className="d-flex justify-content-between align-items-center mb-2">

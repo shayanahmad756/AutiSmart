@@ -37,12 +37,16 @@ const ExpertDashboard = () => {
   };
 
   const patientRows = patients.map(child => ({
-    id: child._id,
+    id: child._id || child.id,
     name: child.name,
     age: child.age,
     diagnosis: child.diagnosis || 'General Care',
-    lastUpdated: child.updatedAt ? new Date(child.updatedAt).toISOString().split('T')[0] : 'N/A',
-    caregiver: child.caregiverId?.name || 'Unknown'
+    caregiver: child.caregiverId?.name || 'Unknown',
+    lastActivityAt: child.latestActivityAt
+      ? new Date(child.latestActivityAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })
+      : null,
+    latestScore: child.latestScore != null ? `${Math.round(child.latestScore)}%` : null,
+    totalActivities: child.totalActivities || 0,
   }));
 
   return (
@@ -225,7 +229,9 @@ const ExpertDashboard = () => {
                           <th className="py-3 border-0">Age</th>
                           <th className="py-3 border-0">Diagnosis</th>
                           <th className="py-3 border-0">Caregiver</th>
-                          <th className="py-3 border-0">Last Updated</th>
+                          <th className="py-3 border-0">Last Activity</th>
+                          <th className="py-3 border-0">Activities</th>
+                          <th className="py-3 border-0">Latest Score</th>
                           <th className="py-3 border-0">Actions</th>
                         </tr>
                       </thead>
@@ -240,7 +246,21 @@ const ExpertDashboard = () => {
                             <td className="py-3">
                               <small className="text-muted"><i className="bi bi-person-fill me-1"></i>{patient.caregiver}</small>
                             </td>
-                            <td className="text-muted py-3"><i className="bi bi-calendar3 me-1"></i>{patient.lastUpdated}</td>
+                            <td className="text-muted py-3">
+                              {patient.lastActivityAt
+                                ? <><i className="bi bi-clock-history me-1 text-success"></i>{patient.lastActivityAt}</>
+                                : <span className="text-muted fst-italic">No activity yet</span>}
+                            </td>
+                            <td className="py-3 text-center">
+                              <span className="badge rounded-pill" style={{ background: patient.totalActivities > 0 ? '#5EBEB0' : '#dee2e6', color: patient.totalActivities > 0 ? 'white' : '#6c757d' }}>
+                                {patient.totalActivities}
+                              </span>
+                            </td>
+                            <td className="py-3">
+                              {patient.latestScore
+                                ? <span className="badge rounded-pill bg-success">{patient.latestScore}</span>
+                                : <span className="text-muted fst-italic">—</span>}
+                            </td>
                             <td className="py-3">
                               <div className="d-flex gap-2">
                                 <button className="btn btn-sm rounded-pill px-3"
@@ -285,6 +305,12 @@ const ExpertDashboard = () => {
                   onMouseEnter={(e) => { e.currentTarget.style.background = '#5EBEB0'; e.currentTarget.style.color = 'white'; }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#5EBEB0'; }}>
                   <i className="bi bi-clipboard2-check me-1"></i>Quiz Results
+                </button>
+                <button className="btn btn-sm" style={{ border: '1.5px solid #5EBEB0', color: '#5EBEB0', background: 'transparent', borderRadius: '8px', fontSize: '0.85rem', padding: '6px 10px' }}
+                  onClick={() => navigate('/tracker')}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = '#5EBEB0'; e.currentTarget.style.color = 'white'; }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = '#5EBEB0'; }}>
+                  <i className="bi bi-graph-up me-1"></i>Symptom Tracker
                 </button>
                 <button className="btn btn-sm" style={{ border: '1.5px solid #5EBEB0', color: '#5EBEB0', background: 'transparent', borderRadius: '8px', fontSize: '0.85rem', padding: '6px 10px' }}
                   onClick={() => navigate('/communication')}
