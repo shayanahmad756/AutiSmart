@@ -1,23 +1,23 @@
-🧩 AutiSmart  
+AutiSmart  
 AI-Powered Autism Support & Early Detection Platform
 
-📖 Overview
+Overview
 
 **AutiSmart** is a full-stack AI-driven platform designed to support the autism community through early detection, personalized therapy, and interactive learning.
 
 It combines:
 
-- 🧠 Deep Learning (**Vision Transformer – ViT-B/16**)  
-- 🤖 AI-powered quiz & therapy engine  
-- 🎮 Interactive therapeutic games  
-- 💬 Real-time expert–caregiver communication  
-- 📊 Progress tracking & analytics  
+- Deep Learning (**Vision Transformer – ViT-B/16**)  
+- AI-powered quiz & therapy engine  
+- Interactive therapeutic games  
+- Real-time expert–caregiver communication  
+- Progress tracking & analytics  
 
 ---
 
-## ✨ Features
+## Features
 
-### 🤖 AI & Machine Learning
+### AI & Machine Learning
 
 - **Autism Screening**  
   Upload a child’s image → AI predicts: `Autistic` / `Non-Autistic`  
@@ -40,7 +40,7 @@ It combines:
 
 ---
 
-### 🎮 Therapeutic Games
+### Therapeutic Games
 
 | Game | Skill |
 |------|------|
@@ -55,7 +55,7 @@ It combines:
 
 ---
 
-### 👨‍👩‍👧 Role-Based System
+### Role-Based System
 
 - **Caregiver** → Manage children, track progress, chat with experts  
 - **Expert** → Assess children, create quizzes, provide therapy  
@@ -63,14 +63,14 @@ It combines:
 
 ---
 
-### 💬 Real-Time Communication
+### Real-Time Communication
 
 - Socket.IO chat  
 - Live notifications (requests, approvals, updates)  
 
 ---
 
-### 📊 Reporting & Analytics
+### Reporting & Analytics
 
 - Progress dashboards  
 - PDF reports  
@@ -79,7 +79,7 @@ It combines:
 
 ---
 
-### 🔐 Security
+### Security
 
 - JWT Authentication  
 - OTP Email Verification  
@@ -89,7 +89,7 @@ It combines:
 
 ---
 
-## 🏗️ Architecture
+## Architecture
 
 ```mermaid
 graph TD
