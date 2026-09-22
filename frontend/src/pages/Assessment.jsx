@@ -1,10 +1,12 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useChild } from '../context/ChildContext';
 import { useAuth } from '../context/AuthContext';
 import Card from '../components/Card';
 import ChildSelector from '../components/ChildSelector';
 import Toast from '../components/Toast';
 import { assessmentService } from '../services';
+import { getAutoNavigateSetting } from '../utils/settingsStorage';
 import '../styles/assessment.css';
 
 const DEFAULT_QUESTIONS = [
@@ -21,12 +23,17 @@ const DEFAULT_QUESTIONS = [
 ];
 
 const Assessment = () => {
+  const navigate = useNavigate();
   const [answers, setAnswers] = useState({});
   const [showResults, setShowResults] = useState(false);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState({ show: false, message: '', type: 'success' });
+  const [autoNavigateEnabled, setAutoNavigateEnabled] = useState(false);
+  const [countdown, setCountdown] = useState(null);
   const { selectedChild } = useChild();
   const { user } = useAuth();
+  const countdownRef = useRef(null);
+  const navigationTriggeredRef = useRef(false);
 
   const [assessmentData, setAssessmentData] = useState({
     title: 'AutiSmart Assessment Quiz',
@@ -36,13 +43,45 @@ const Assessment = () => {
     pending: false
   });
 
-  useEffect(() => {
-    if (!selectedChild?._id) setLoading(false);
+  const fetchChildQuiz = useCallback(async (childId, childName) => {
+    try {
+      setLoading(true);
+      const response = await assessmentService.getChildQuiz(childId);
+      if (response.success && response.data) {
+        const quiz = response.data;
+        setAssessmentData({
+          title: quiz.title || `${childName}'s Personalized Assessment`,
+          description: quiz.description || 'Personalized assessment quiz',
+          questions: quiz.questions || [],
+          isPersonalized: quiz.isPersonalized || false,
+          pending: quiz.pending || false
+        });
+        if (quiz.isPersonalized && quiz.questions?.length > 0) {
+          setToast({ show: true, message: `Loaded personalized quiz for ${childName}`, type: 'info' });
+          setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
+        } else if (quiz.pending || !quiz.questions?.length) {
+          setToast({ show: true, message: `Quiz is being prepared for ${childName} — check back shortly`, type: 'info' });
+          setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
+        }
+      }
+    } catch (error) {
+      console.error('Failed to fetch child quiz, using default:', error);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const clearCountdown = useCallback(() => {
+    if (countdownRef.current) {
+      clearInterval(countdownRef.current);
+      countdownRef.current = null;
+    }
+    setCountdown(null);
   }, []);
 
   useEffect(() => {
     if (selectedChild?._id) {
-      fetchChildQuiz(selectedChild._id);
+      fetchChildQuiz(selectedChild._id, selectedChild?.name);
     } else {
       setAssessmentData({
         title: 'AutiSmart Assessment Quiz',
@@ -55,38 +94,58 @@ const Assessment = () => {
     }
     setAnswers({});
     setShowResults(false);
-  }, [selectedChild?._id]);
+    navigationTriggeredRef.current = false;
+    clearCountdown();
+  }, [selectedChild?._id, selectedChild?.name, fetchChildQuiz, clearCountdown]);
 
-  const fetchChildQuiz = async (childId) => {
-    try {
-      setLoading(true);
-      const response = await assessmentService.getChildQuiz(childId);
-      if (response.success && response.data) {
-        const quiz = response.data;
-        setAssessmentData({
-          title: quiz.title || `${selectedChild?.name}'s Personalized Assessment`,
-          description: quiz.description || 'Personalized assessment quiz',
-          questions: quiz.questions || [],
-          isPersonalized: quiz.isPersonalized || false,
-          pending: quiz.pending || false
-        });
-        if (quiz.isPersonalized && quiz.questions?.length > 0) {
-          showToast(`Loaded personalized quiz for ${selectedChild?.name}`, 'info');
-        } else if (quiz.pending || !quiz.questions?.length) {
-          showToast(`Quiz is being prepared for ${selectedChild?.name} — check back shortly`, 'info');
-        }
-      }
-    } catch (error) {
-      console.error('Failed to fetch child quiz, using default:', error);
-    } finally {
-      setLoading(false);
-    }
-  };
+  useEffect(() => () => clearCountdown(), [clearCountdown]);
 
-  const showToast = (message, type = 'success') => {
+  const showToast = useCallback((message, type = 'success') => {
     setToast({ show: true, message, type });
     setTimeout(() => setToast({ show: false, message: '', type: 'success' }), 3000);
-  };
+  }, []);
+
+  const goToTherapyGames = useCallback(() => {
+    if (navigationTriggeredRef.current) {
+      return;
+    }
+
+    navigationTriggeredRef.current = true;
+    clearCountdown();
+    navigate('/therapy-game-transition', { replace: true });
+  }, [clearCountdown, navigate]);
+
+  useEffect(() => {
+    clearCountdown();
+    navigationTriggeredRef.current = false;
+
+    if (!showResults) {
+      setAutoNavigateEnabled(false);
+      return;
+    }
+
+    const savedAutoNavigate = getAutoNavigateSetting();
+    setAutoNavigateEnabled(savedAutoNavigate);
+
+    if (!savedAutoNavigate) {
+      return;
+    }
+
+    setCountdown(5);
+    countdownRef.current = setInterval(() => {
+      setCountdown((prev) => {
+        if (prev <= 1) {
+          clearCountdown();
+          goToTherapyGames();
+          return null;
+        }
+
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearCountdown();
+  }, [showResults, clearCountdown, goToTherapyGames]);
 
   const handleAnswer = (questionId, optionIndex, score) => {
     setAnswers({ ...answers, [questionId]: { optionIndex, score } });
@@ -158,7 +217,13 @@ const Assessment = () => {
 
   const getTotalQuestions = () => assessmentData.questions?.length || 0;
   const getAnsweredCount = () => Object.keys(answers).length;
-  const resetAssessment = () => { setAnswers({}); setShowResults(false); };
+  const resetAssessment = () => {
+    clearCountdown();
+    navigationTriggeredRef.current = false;
+    setAutoNavigateEnabled(false);
+    setAnswers({});
+    setShowResults(false);
+  };
 
   const getCategoryBadgeColor = (category) => {
     const colors = { 'Eye Contact': 'success', 'Social Interaction': 'warning', 'Communication': 'success', 'Repetitive Behavior': 'info', 'Sensory Sensitivity': 'warning', 'Focus & Attention': 'info' };
@@ -308,6 +373,9 @@ const Assessment = () => {
                         </div>
                       </div>
                       <div className="d-flex gap-3 justify-content-center">
+                        <button className="btn btn-success" onClick={goToTherapyGames} style={{ backgroundColor: '#4aa89c', borderColor: '#4aa89c' }}>
+                          <i className="bi bi-controller me-2"></i>Next: Therapy Games
+                        </button>
                         <button className="btn btn-primary" onClick={() => window.print()} style={{ backgroundColor: '#59B5AA', borderColor: '#59B5AA' }}>
                           <i className="bi bi-printer me-2"></i>Print Results
                         </button>
@@ -315,6 +383,14 @@ const Assessment = () => {
                           <i className="bi bi-arrow-clockwise me-2"></i>Retake Assessment
                         </button>
                       </div>
+                      {autoNavigateEnabled && countdown !== null && (
+                        <div className="mt-4 text-center">
+                          <div className="alert alert-info d-inline-flex align-items-center mb-0" style={{ borderRadius: '999px', padding: '0.85rem 1.25rem', fontWeight: 600 }}>
+                            <i className="bi bi-hourglass-split me-2"></i>
+                            Starting therapy game in {countdown}…
+                          </div>
+                        </div>
+                      )}
                     </>
                   );
                 })()}

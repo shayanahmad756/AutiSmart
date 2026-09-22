@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import Card from '../components/Card';
+import { getAutoNavigateSetting, setAutoNavigateSetting } from '../utils/settingsStorage';
 
 const Settings = () => {
   const { user } = useAuth();
@@ -12,15 +13,22 @@ const Settings = () => {
     smsNotifications: false,
     theme: 'light',
     language: 'en',
+    autoNavigate: getAutoNavigateSetting(),
   });
   const [success, setSuccess] = useState('');
   const [error, setError] = useState('');
 
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
+    const nextValue = type === 'checkbox' ? checked : value;
+
+    if (name === 'autoNavigate') {
+      setAutoNavigateSetting(nextValue);
+    }
+
     setFormData({
       ...formData,
-      [name]: type === 'checkbox' ? checked : value,
+      [name]: nextValue,
     });
   };
 
@@ -34,7 +42,7 @@ const Settings = () => {
       // await updateSettings(formData);
       setSuccess('Settings updated successfully!');
       setTimeout(() => setSuccess(''), 3000);
-    } catch (err) {
+    } catch {
       setError('Failed to update settings. Please try again.');
     }
   };
@@ -176,6 +184,23 @@ const Settings = () => {
                 <option value="ur">Urdu</option>
                 <option value="ar">Arabic</option>
               </select>
+            </div>
+
+            <div className="mb-2">
+              <div className="form-check form-switch">
+                <input
+                  className="form-check-input"
+                  type="checkbox"
+                  name="autoNavigate"
+                  id="autoNavigate"
+                  checked={formData.autoNavigate}
+                  onChange={handleChange}
+                />
+                <label className="form-check-label" htmlFor="autoNavigate">
+                  Automatically start next therapy game after assessment
+                </label>
+              </div>
+              <small className="text-muted">When enabled, the assessment results will count down and move to therapy games automatically.</small>
             </div>
           </Card>
 
